@@ -1,0 +1,7 @@
+#
+# brew/tasks/main.yml
+# main tasks of brew
+#
+- import_tasks: install.yml
+- import_tasks: configure.yml
+- import_tasks: app.yml

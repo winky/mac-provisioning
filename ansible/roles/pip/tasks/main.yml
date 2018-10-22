@@ -1,0 +1,5 @@
+#
+# pip/tasks/main.yml
+# pip main tasks
+#
+- import_tasks: install.yml

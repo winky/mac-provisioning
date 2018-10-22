@@ -1,0 +1,20 @@
+#
+# brew/tasks/app.yml
+# brew tasks for app
+#
+- name: Install homebrew packages
+  homebrew:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    install_options: "{{ item.install_options | default('') }}"
+  when: homebrew_packages is defined
+  with_items: "{{ homebrew_packages }}"
+
+- name: Install homebrew cask packages
+  environment:
+    HOMEBREW_CASK_OPTS: --appdir=/Applications
+  homebrew_cask:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+  when: homebrew_cask_packages is defined
+  with_items: "{{ homebrew_cask_packages }}"

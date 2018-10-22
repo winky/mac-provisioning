@@ -1,0 +1,21 @@
+mas_install_apps:
+  - {
+      id: 497799835,
+      name: Xcode
+    }
+  - {
+      id: 866773894,
+      name: Quiver
+    }
+  - {
+      id: 539883307,
+      name: LINE
+    }
+  - {
+      id: 803453959,
+      name: Slack
+    }
+  - {
+      id: 472226235,
+      name: LanScan
+    }

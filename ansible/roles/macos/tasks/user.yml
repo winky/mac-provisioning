@@ -1,0 +1,11 @@
+#
+# macos/tasks/terminal.yml
+#
+#
+- name: Chage shell to zsh
+  become: true
+  user:
+    name: "{{ ansible_env.USER }}"
+    shell: /bin/zsh
+  tags:
+    - shell

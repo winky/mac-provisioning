@@ -1,0 +1,5 @@
+#
+# mas/tasks/main.yml
+# Mac App Store main tasks
+#
+- import_tasks: install.yml

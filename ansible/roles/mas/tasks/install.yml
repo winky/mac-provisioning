@@ -1,0 +1,23 @@
+#
+# mas/tasks/install.yml
+# Mac App Store install tasks
+#
+- name: mas is isntalled
+  shell: brew list
+  register: mas_brew_list
+  failed_when: mas_brew_list.rc not in [0, 1]
+  changed_when: False
+
+- block:
+  - name: mas installed list
+    shell: mas list
+    register: mas_installed_list
+    failed_when: mas_installed_list.rc not in [0, 1]
+    changed_when: False
+
+  - name: mas install apps
+    shell: mas install "{{ item.id }}"
+    when: '"item.id" not in mas_installed_list.stdout'
+    with_items: "{{ mas_install_apps }}"
+
+  when: '"mas" in mas_brew_list.stdout_lines'

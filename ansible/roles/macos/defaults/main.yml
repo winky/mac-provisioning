@@ -1,0 +1,222 @@
+network_service:
+    - "Wi-Fi"
+
+global_defaults:
+  ###############################################################################
+  # General
+  ###############################################################################
+  # InterfaceStyle
+  - key: AppleInterfaceStyle
+    type: string
+    value: Dark
+  ###############################################################################
+  # Language & Region
+  ###############################################################################
+  # Langages
+  - key: AppleLanguages
+    type: array
+    value:
+      - "en-JP"
+      - "ja-JP"
+  - key: AppleLocale
+    type: string
+    value: "en_JP"
+  - key: AppleMeasurementUnits
+    type: string
+    value: Centimeters
+  - key: AppleTemperatureUnit
+    type: string
+    value: Celsius
+  - key: AppleMetricUnits
+    type: bool
+    value: true
+  ###############################################################################
+  # Trackpad
+  ###############################################################################
+  # Trackpad: Enable tap to click
+  - key: com.apple.mouse.tapBehavior
+    type: int
+    value: 1
+  # Enable tap to click
+  - host: currentHost
+    key: com.apple.mouse.tapBehavior
+    type: int
+    value: 1
+  # Don't swipe between pages
+  - key: AppleEnableSwipeNavigateWithScrolls
+    type: bool
+    value: false
+  ###############################################################################
+  # Trackpad
+  ###############################################################################
+  # KeyPreat
+  - key: InitialKeyRepeat
+    type: int
+    value: 10
+  # Delay Util Repeat
+  - key: KeyRepeat
+    type: int
+    value: 1
+
+apple_defaults:
+  ###############################################################################
+  # Dock
+  ###############################################################################
+  # Dock: Magnification largesize
+  - domain: dock
+    key: tilesize
+    type: float
+    value: 35
+  # Dock; Position on screen
+  - domain: dock
+    key: orientation
+    type: string
+    value: right
+  # Dock: Automatically hide and show the Dock
+  - domain: dock
+    key: autohide
+    type: bool
+    value: true
+  # Dock: Magnification
+  - domain: dock
+    key: magnification
+    type: bool
+    value: true
+  # Dock: Magnification largesize
+  - domain: dock
+    key: largesize
+    type: float
+    value: 55
+  # Wipe all (default) app icons from the Dock
+  - domain: dock
+    key: persistent-apps
+    type: array
+    value:
+      - ""
+  ###############################################################################
+  # Mission Control & Hot Corner
+  ###############################################################################
+  # Don’t automatically rearrange Spaces based on most recent use
+  - domain: dock
+    key: mru-spaces
+    type: bool
+    value: false
+  # Dashboard:
+  #  1: Off
+  #  2: As Space
+  #  3: As Overlay
+  - domain: dashboard
+    key: dashboard-enabled-state
+    type: int
+    value: 3
+  # Hot Corners:
+  #  0: no-op
+  #  2: Mission Control
+  #  3: Show application windows
+  #  4: Desktop
+  #  5: Start screen saver
+  #  6: Disable screen saver
+  #  7: Dashboard
+  # 10: Put display to sleep
+  # 11: Launchpad
+  # 12: Notification Center
+  #
+  # Hot Corners: top-left
+  - domain: dock
+    key: wvous-tl-corner
+    type: int
+    value: 2
+  # Hot Corners: top-left
+  - domain: dock
+    key: wvous-tl-modifier
+    type: int
+    value: 0
+  # Hot Corners: bottom-left
+  - domain: dock
+    key: wvous-bl-corner
+    type: int
+    value: 11
+  # Hot Corners: bottom-left
+  - domain: dock
+    key: wvous-bl-modifier
+    type: int
+    value: 0
+  ###############################################################################
+  # Energy Saver
+  ###############################################################################
+  # Show percent of battery on menu bar
+  - domain: menuextra.battery
+    key: ShowPercent
+    type: string
+    value: YES
+  ###############################################################################
+  # Keyboard
+  ###############################################################################
+  # Input Sources
+  - domain: HIToolbox
+    key: AppleEnabledInputSources
+    type: array
+    value:
+      - '{ "Bundle ID" = "com.apple.50onPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
+      - '{ "Bundle ID" = "com.apple.inputmethod.EmojiFunctionRowItem"; InputSourceKind = "Non Keyboard Input Method"; }'
+      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Japanese"; InputSourceKind = "Input Mode"; }'
+      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; InputSourceKind = "Keyboard Input Method"; }'
+      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Roman"; InputSourceKind = "Input Mode"; }'
+  - domain: HIToolbox
+    key: AppleInputSourceHistory
+    type: array
+    value:
+      - '{ "Bundle ID" = "com.apple.50onPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
+      - '{ "Bundle ID" = "com.apple.inputmethod.EmojiFunctionRowItem"; InputSourceKind = "Non Keyboard Input Method"; }'
+      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Japanese"; InputSourceKind = "Input Mode"; }'
+      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; InputSourceKind = "Keyboard Input Method"; }'
+      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Roman"; InputSourceKind = "Input Mode"; }'
+  - domain: HIToolbox
+    key: AppleSelectedInputSources
+    type: array
+    value:
+      - '{ "Bundle ID" = "com.apple.inputmethod.EmojiFunctionRowItem"; InputSourceKind = "Non Keyboard Input Method"; }'
+      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Roman"; InputSourceKind = "Input Mode"; }'
+  ###############################################################################
+  # Trackpad
+  ###############################################################################
+  # Enable tap to click
+  - domain: driver.AppleBluetoothMultitouch.trackpad
+    key: Clicking
+    type: int
+    value: 1
+  - domain: AppleMultitouchTrackpad
+    key: TrackpadThreeFingerVertSwipeGesture
+    type: int
+    value: 0
+  - domain: AppleMultitouchTrackpad
+    key: TrackpadThreeFingerHorizSwipeGesture
+    type: int
+    value: 0
+  - domain: dock
+    key: showMissionControlGestureEnabled
+    type: bool
+    value: true
+  ###############################################################################
+  # Finder
+  ###############################################################################
+  # Finder: Hide files and folders on Desktop
+  - domain: finder
+    key: CreateDesktop
+    type: bool
+    value: false
+  # Finder: Show dotfiles
+  - domain: finder
+    key: AppleShowAllFiles
+    type: bool
+    value: true
+  - domain: systemuiserver
+    key: menuExtras
+    type: array
+    value:
+      - "/System/Library/CoreServices/Menu Extras/Bluetooth.menu"
+      - "/System/Library/CoreServices/Menu Extras/AirPort.menu"
+      - "/System/Library/CoreServices/Menu Extras/Battery.menu"
+      - "/System/Library/CoreServices/Menu Extras/Clock.menu"
+      - "/System/Library/CoreServices/Menu Extras/TextInput.menu"
+

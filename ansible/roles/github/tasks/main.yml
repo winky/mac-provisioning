@@ -1,0 +1,7 @@
+#
+# github/tasks/main.yml
+# main task for github
+#
+- import_tasks: configure.yml
+  tags:
+    - configure

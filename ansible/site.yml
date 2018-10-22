@@ -1,0 +1,23 @@
+---
+- name: macOS Provisioning
+  hosts: local
+  become: no
+  roles:
+    - role: github
+      tags:
+        - github
+    - role: brew
+      tags:
+        - brew
+    - role: pip
+      tags:
+        - pip
+    - role: mas
+      tags:
+        - mas
+    - role: macos
+      tags:
+        - macos
+    - role: dotfiles
+      tags:
+        - dotfiles

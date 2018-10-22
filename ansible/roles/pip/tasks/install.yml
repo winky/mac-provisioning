@@ -1,0 +1,11 @@
+#
+# pip/tasks/install.yml
+# install pip libraries
+#
+- name: Install pip3 libraries
+  pip:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    executable: pip3
+  when: pip3_libraries is defined
+  with_items: "{{ pip3_libraries }}"

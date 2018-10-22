@@ -1,0 +1,30 @@
+#
+# github/tasks/main.yml
+# configure task of github
+#
+- name: Check SSH key exists
+  stat:
+    path: "{{ ssh_key_path }}/{{ ssh_key_name }}"
+  register: ssh_key
+
+- name: Create SSH key for user
+  user:
+    name: winky
+    generate_ssh_key: yes
+    ssh_key_file: "{{ ssh_key_path }}/{{ ssh_key_name }}"
+    ssh_key_bits: 4096
+  when: not ssh_key.stat.exists
+  tags:
+    - ssh_key
+
+- name: Read SSH public key
+  shell: cat "{{ ssh_key_path }}/{{ ssh_key_name }}.pub"
+  register: ssh_pub_key
+  failed_when: ssh_pub_key.rc not in [0, 1]
+  changed_when: False
+
+- name: Add public keys to github
+  github_key:
+    name: "{{ ansible_facts.hostname }}"
+    token: "{{ github_access_token }}"
+    pubkey: "{{ ssh_pub_key.stdout }}"

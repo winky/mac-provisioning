@@ -1,0 +1,90 @@
+homebrew_tap:
+  - homebrew/cask
+  - homebrew/cask-versions
+
+homebrew_packages:
+  - {
+      name: "tmux"
+    }
+  - {
+      name: "telnet"
+    }
+  - {
+      name: "mas"
+    }
+  - {
+      name: "vim",
+      install_options: [with-lua]
+    }
+  - {
+      name: "neovim"
+    }
+  - {
+      name: "tree"
+    }
+  - {
+      name: "gawk"
+    }
+  - {
+      name: "zsh"
+    }
+
+homebrew_cask_packages:
+  - {
+      # TODO: when 1password7 can fill password on Chrome, change 1password
+      name: "1password"
+    }
+  - {
+      name: "adobe-creative-cloud"
+    }
+  - {
+      name: "android-studio"
+    }
+  - {
+      name: "alfred2"
+    }
+  - {
+      name: "avast-security"
+    }
+  - {
+      name: "bettertouchtool"
+    }
+  - {
+      name: "docker"
+    }
+  - {
+      name: "firefox-developer-edition"
+    }
+  - {
+      name: "franz"
+    }
+  - {
+      name: "google-chrome"
+    }
+  - {
+      name: "google-japanese-ime"
+    }
+  - {
+      name: "iterm2"
+    }
+  - {
+      name: "karabiner-elements"
+    }
+  - {
+      name: "parallels"
+    }
+  - {
+      name: "quiver"
+    }
+  - {
+      name: "skype"
+    }
+  - {
+      name: "virtualbox"
+    }
+  - {
+      name: "vagrant"
+    }
+  - {
+      name: "visual-studio-code"
+    }

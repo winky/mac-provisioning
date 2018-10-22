@@ -1,0 +1,13 @@
+#
+# macos/tasks/main.yml
+# main task for macos settings
+#
+- import_tasks: user.yml
+  tags:
+    - user
+- import_tasks: network.yml
+  tags:
+    - network
+- import_tasks: defaults.yml
+  tags:
+    - defaults

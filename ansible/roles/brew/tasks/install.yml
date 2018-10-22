@@ -1,0 +1,19 @@
+#
+# brew/tasks/install.yml
+# Install brew
+#
+- name: check exist brew command
+  shell: type brew
+  register: exist_brew
+  failed_when: exist_brew.rc not in [0, 1]
+  changed_when: False
+
+- block:
+    - name: get brew installer
+      get_url:
+        url: https://raw.githubusercontent.com/Homebrew/install/master/install
+        dest: /tmp/brew_installer
+    
+    - name: brew install
+      command: ruby /tmp/brew_installer
+  when: exist_brew.rc == 1

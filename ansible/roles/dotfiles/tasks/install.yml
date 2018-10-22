@@ -1,0 +1,21 @@
+#
+# dotfiles/tasks/install.yml
+# Install dotfiles task
+#
+- name: Check dotfiles exists
+  stat:
+    path: "{{ dotfiles_path }}"
+  register: dotfiles
+
+- block:
+  - name: Get dotfiles
+    git:
+      repo: "git@github.com:winky/dotfiles.git"
+      dest: "{{ dotfiles_path }}"
+      accept_hostkey: yes
+
+  - name: Install dotfiles
+    shell: make install
+    args:
+      chdir: "{{ dotfiles_path }}"
+  when: not dotfiles.stat.exists

@@ -1,0 +1,5 @@
+#
+# dotfiles/tasks/main.yml
+# main task for dotfiles
+#
+- import_tasks: install.yml

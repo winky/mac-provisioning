@@ -1,0 +1,4 @@
+pip3_libraries:
+  - {
+      name: "neovim"
+    }

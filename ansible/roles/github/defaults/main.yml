@@ -1,0 +1,2 @@
+ssh_key_path: "{{ ansible_env.HOME }}/.ssh"
+ssh_key_name: id_rsa

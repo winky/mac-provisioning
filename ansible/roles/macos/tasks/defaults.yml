@@ -1,0 +1,28 @@
+#
+# macos/tasks/default.yml
+# macos defaults settings
+#
+- name: set NSGlobalDomain
+  osx_defaults:
+    host: "{{ item.host | default() }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+  with_items: "{{ global_defaults }}"
+  tags:
+    - setting
+
+- name: set com.apple defaults
+  osx_defaults:
+    host: "{{ item.host | default() }}"
+    domain: "com.apple.{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value | default() }}"
+  register: defaults_out
+  with_items:
+    - "{{ apple_defaults }}"
+  tags:
+    - setting
+
+- debug: var=defaults_out
