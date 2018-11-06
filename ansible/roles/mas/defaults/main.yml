@@ -19,3 +19,7 @@ mas_install_apps:
       id: 472226235,
       name: LanScan
     }
+  - {
+      id: 494803304,
+      name: WiFi Explorer
+    }
