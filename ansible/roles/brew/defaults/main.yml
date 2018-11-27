@@ -31,7 +31,6 @@ homebrew_packages:
 
 homebrew_cask_packages:
   - {
-      # TODO: when 1password7 can fill password on Chrome, change 1password
       name: "1password"
     }
   - {
