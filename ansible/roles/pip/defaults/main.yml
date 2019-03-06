@@ -2,3 +2,9 @@ pip3_libraries:
   - {
       name: "neovim"
     }
+  - {
+      name: "docker-py"
+    }
+  - {
+      name: "ansible-lint"
+    }
