@@ -23,6 +23,12 @@ homebrew_packages:
       name: "neovim"
     }
   - {
+      name: "node-build"
+  }
+  - {
+      name: "nodenv"
+  }
+  - {
       name: "tree"
     }
   - {
