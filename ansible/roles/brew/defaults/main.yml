@@ -88,8 +88,5 @@ homebrew_cask_packages:
       name: "virtualbox"
     }
   - {
-      name: "vagrant"
-    }
-  - {
       name: "visual-studio-code"
     }
