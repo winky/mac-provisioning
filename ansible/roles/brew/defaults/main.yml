@@ -10,6 +10,9 @@ homebrew_packages:
       name: "telnet"
     }
   - {
+      name: "circleci"
+    }
+  - {
       name: "mas"
     }
   - {
@@ -65,6 +68,9 @@ homebrew_cask_packages:
     }
   - {
       name: "iterm2"
+    }
+  - {
+      name: "kitematic"
     }
   - {
       name: "karabiner-elements"
