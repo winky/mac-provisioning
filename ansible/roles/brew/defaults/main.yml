@@ -64,8 +64,8 @@ homebrew_cask_packages:
       name: "firefox-developer-edition"
     }
   - {
-      name: "franz"
-    }
+      name: "dozer"
+  }
   - {
       name: "google-chrome"
     }
@@ -89,6 +89,9 @@ homebrew_cask_packages:
     }
   - {
       name: "skype"
+    }
+  - {
+      name: "station"
     }
   - {
       name: "virtualbox"
