@@ -16,10 +16,6 @@ homebrew_packages:
       name: "mas"
     }
   - {
-      name: "vim",
-      install_options: [with-lua]
-    }
-  - {
       name: "neovim"
     }
   - {
