@@ -49,6 +49,9 @@ homebrew_cask_packages:
       name: "android-studio"
     }
   - {
+      name: "alacritty"
+    }
+  - {
       name: "alfred2"
     }
   - {
