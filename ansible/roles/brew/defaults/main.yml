@@ -20,10 +20,10 @@ homebrew_packages:
     }
   - {
       name: "node-build"
-  }
+    }
   - {
       name: "nodenv"
-  }
+    }
   - {
       name: "tree"
     }
@@ -43,9 +43,6 @@ homebrew_cask_packages:
     }
   - {
       name: "android-studio"
-    }
-  - {
-      name: "alacritty"
     }
   - {
       name: "alfred2"
@@ -75,19 +72,10 @@ homebrew_cask_packages:
       name: "iterm2"
     }
   - {
-      name: "kitematic"
-    }
-  - {
       name: "karabiner-elements"
     }
   - {
       name: "parallels"
-    }
-  - {
-      name: "quiver"
-    }
-  - {
-      name: "skype"
     }
   - {
       name: "station"
