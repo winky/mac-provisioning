@@ -60,6 +60,9 @@ homebrew_cask_packages:
       name: "firefox-developer-edition"
     }
   - {
+      name: "kap"
+    }
+  - {
       name: "dozer"
   }
   - {
@@ -73,6 +76,9 @@ homebrew_cask_packages:
     }
   - {
       name: "karabiner-elements"
+    }
+  - {
+      name: "ngrok"
     }
   - {
       name: "parallels"
