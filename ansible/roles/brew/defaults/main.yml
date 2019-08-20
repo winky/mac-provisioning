@@ -45,7 +45,7 @@ homebrew_cask_packages:
       name: "android-studio"
     }
   - {
-      name: "alfred2"
+      name: "alfred"
     }
   - {
       name: "avast-security"

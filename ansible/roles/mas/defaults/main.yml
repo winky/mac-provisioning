@@ -16,6 +16,10 @@ mas_install_apps:
       name: Slack
     }
   - {
+      id: 412448059,
+      name: ForkLift
+    }
+  - {
       id: 472226235,
       name: LanScan
     }
