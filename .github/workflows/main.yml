@@ -13,3 +13,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: init
       run: make init
+    - name: install ansible-lint
+      run: pip install ansible-lint
+    - name: ansible-lint
+      run: ansible-lint ansible/site.yml
