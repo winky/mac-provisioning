@@ -17,3 +17,5 @@ jobs:
       run: pip install ansible-lint
     - name: ansible-lint
       run: ansible-lint -c ansible/.ansible-lint ansible/site.yml
+    - name: run ansible-playbook
+      run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags="skip_test"
