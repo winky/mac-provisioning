@@ -1,6 +1,5 @@
 homebrew_tap:
   - homebrew/cask
-  - homebrew/cask-versions
 
 homebrew_packages:
   - {
