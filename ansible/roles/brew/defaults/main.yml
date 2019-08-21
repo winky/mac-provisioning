@@ -86,7 +86,8 @@ homebrew_cask_packages:
       name: "station"
     }
   - {
-      name: "virtualbox"
+      name: "virtualbox",
+      install_options: "force"
     }
   - {
       name: "visual-studio-code"
