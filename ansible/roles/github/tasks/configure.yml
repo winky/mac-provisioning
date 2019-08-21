@@ -18,7 +18,7 @@
     - ssh_key
 
 - name: Read SSH public key
-  shell: cat "{{ ssh_key_path }}/{{ ssh_key_name }}.pub"
+  command: cat "{{ ssh_key_path }}/{{ ssh_key_name }}.pub"
   register: ssh_pub_key
   failed_when: ssh_pub_key.rc not in [0, 1]
   changed_when: False

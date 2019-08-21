@@ -15,7 +15,7 @@
       accept_hostkey: yes
 
   - name: Install dotfiles
-    shell: make install
+    command: make install
     args:
       chdir: "{{ dotfiles_path }}"
   when: not dotfiles.stat.exists
