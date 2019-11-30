@@ -3,8 +3,6 @@
 # macOS task for network settings
 #
 - name: DNS setting
-  shell: networksetup -setdnsservers "{{ item }}" 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 2606:4700:4700::1111 2606:4700:4700::1001
+  command: networksetup -setdnsservers "{{ item }}" 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 2606:4700:4700::1111 2606:4700:4700::1001
   with_items: "{{ network_service }}"
-  tags:
-    - DNS
-    - setting
+  tags: [ DNS, setting, skip_test ]

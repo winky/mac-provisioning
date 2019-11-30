@@ -9,7 +9,7 @@
 
 - name: Create SSH key for user
   user:
-    name: winky
+    name: "{{ ansible_ssh_user }}"
     generate_ssh_key: yes
     ssh_key_file: "{{ ssh_key_path }}/{{ ssh_key_name }}"
     ssh_key_bits: 4096
@@ -18,7 +18,7 @@
     - ssh_key
 
 - name: Read SSH public key
-  shell: cat "{{ ssh_key_path }}/{{ ssh_key_name }}.pub"
+  command: cat "{{ ssh_key_path }}/{{ ssh_key_name }}.pub"
   register: ssh_pub_key
   failed_when: ssh_pub_key.rc not in [0, 1]
   changed_when: False
@@ -28,3 +28,4 @@
     name: "{{ ansible_facts.hostname }}"
     token: "{{ github_access_token }}"
     pubkey: "{{ ssh_pub_key.stdout }}"
+  tags: [ skip_test ]

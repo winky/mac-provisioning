@@ -6,6 +6,7 @@
   homebrew_tap:
     tap: "{{ item }}"
     state: present
+  when: homebrew_tap is defined
   with_items: "{{ homebrew_tap }}"
 
 - name: update homebrew

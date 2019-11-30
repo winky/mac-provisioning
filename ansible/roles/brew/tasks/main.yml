@@ -3,5 +3,8 @@
 # main tasks of brew
 #
 - import_tasks: install.yml
+  tags: [ brew-install ]
 - import_tasks: configure.yml
+  tags: [ brew-configure ]
 - import_tasks: app.yml
+  tags: [ brew-app ]

@@ -14,11 +14,4 @@ else
   sudo easy_install pip
 fi
 
-if type "ansible" > /dev/null 2>&1;
-then
-  echo "Do find command ansible."
-else
-  echo "Not find command ansible!"
-  echo "Install ansible"
-  sudo pip install ansible
-fi
+sudo pip install -r ./etc/init/requirements.txt
