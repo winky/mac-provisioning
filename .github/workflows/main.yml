@@ -6,19 +6,23 @@ on:
       - develop
 
 jobs:
+  lint:
+    runs-on: macOS-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: init
+        run: make init
+      - name: ansible-lint
+        run: ansible-lint -c ansible/.ansible-lint ansible/site.yml
+
   test:
     runs-on: macOS-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - name: init
-      run: make init
-    - name: install ansible-lint
-      run: pip install ansible-lint
-    - name: ansible-lint
-      run: ansible-lint -c ansible/.ansible-lint ansible/site.yml
-    - name: run ansible-playbook
-      run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags="skip_test, brew-app"
-    - run: sudo spctl --master-disable
-    - name: install virtualbox
-      run: brew cask install --force virtualbox
+      - uses: actions/checkout@v1
+      - name: init
+        run: make init
+      - name: run ansible-playbook
+        run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags="skip_test, brew-app"
+      - run: sudo spctl --master-disable
