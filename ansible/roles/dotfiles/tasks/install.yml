@@ -10,9 +10,8 @@
 - block:
   - name: Get dotfiles
     git:
-      repo: "git@github.com:winky/dotfiles.git"
+      repo: "https://github.com/winky/dotfiles.git"
       dest: "{{ dotfiles_path }}"
-      accept_hostkey: yes
 
   - name: Install dotfiles
     command: make install
