@@ -36,5 +36,5 @@ mas "Keynote", id: 409183694
 mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
 mas "Xcode", id: 497799835
-mas "LanSca", id: 472226235
+mas "LanScan", id: 472226235
 mas "WiFi Explorer", id: 494803304
