@@ -12,3 +12,6 @@
     - role: macos
       tags:
         - macos
+    - role: github
+      tags:
+        - github
