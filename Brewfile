@@ -37,6 +37,7 @@ cask "slack"
 cask "virtualbox"
 cask "visual-studio-code"
 cask "zoom"
+cask "wifi-explorer"
 
 mas "GarageBand", id: 682658836
 mas "iMovie", id: 408981434
@@ -45,4 +46,3 @@ mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
 mas "Xcode", id: 497799835
 mas "LanScan", id: 472226235
-mas "WiFi Explorer", id: 494803304
