@@ -36,7 +36,6 @@ cask "postico"
 cask "slack"
 cask "virtualbox"
 cask "visual-studio-code"
-cask "zoom"
 cask "wifi-explorer"
 
 mas "GarageBand", id: 682658836
