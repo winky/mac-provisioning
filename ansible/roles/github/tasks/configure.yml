@@ -9,7 +9,7 @@
 
 - name: Create SSH key for user
   user:
-    name: "{{ ansible_ssh_user }}"
+    name: "{{ ansible_user }}"
     generate_ssh_key: yes
     ssh_key_file: "{{ ssh_key_path }}/{{ ssh_key_name }}"
     ssh_key_bits: 4096
