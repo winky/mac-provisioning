@@ -25,4 +25,15 @@
   tags:
     - setting
 
-- debug: var=defaults_out
+- name: set com.microsoft defaults
+  osx_defaults:
+    host: "{{ item.host | default() }}"
+    domain: "com.microsoft.{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value | default() }}"
+  register: defaults_out
+  with_items:
+    - "{{ microsoft_defaults }}"
+  tags:
+    - setting

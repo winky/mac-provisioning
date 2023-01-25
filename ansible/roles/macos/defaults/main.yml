@@ -33,29 +33,27 @@ global_defaults:
   ###############################################################################
   # Trackpad
   ###############################################################################
-  # Trackpad: Enable tap to click
-  - key: com.apple.mouse.tapBehavior
-    type: int
-    value: 1
   # Enable tap to click
   - host: currentHost
     key: com.apple.mouse.tapBehavior
     type: int
     value: 1
+  - key: com.apple.trackpad.scaling
+    type: int
+    value: 5
   # Don't swipe between pages
   - key: AppleEnableSwipeNavigateWithScrolls
     type: bool
     value: false
   ###############################################################################
-  # Trackpad
+  # Keyboard
   ###############################################################################
-  # KeyPreat
+  # KeyRepeat
   - key: InitialKeyRepeat
-    type: int
+    type: float
     value: 10
-  # Delay Util Repeat
   - key: KeyRepeat
-    type: int
+    type: float
     value: 1
 
 apple_defaults:
@@ -158,19 +156,10 @@ apple_defaults:
     type: array
     value:
       - '{ "Bundle ID" = "com.apple.50onPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.apple.inputmethod.EmojiFunctionRowItem"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Japanese"; InputSourceKind = "Input Mode"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; InputSourceKind = "Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Roman"; InputSourceKind = "Input Mode"; }'
-  - domain: HIToolbox
-    key: AppleInputSourceHistory
-    type: array
-    value:
-      - '{ "Bundle ID" = "com.apple.50onPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.apple.inputmethod.EmojiFunctionRowItem"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Japanese"; InputSourceKind = "Input Mode"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; InputSourceKind = "Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Roman"; InputSourceKind = "Input Mode"; }'
+      - '{ "Bundle ID" = "com.apple.CharacterPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
+      - '{ InputSourceKind = "Keyboard Layout"; "KeyboardLayout ID" = 252; "KeyboardLayout Name" = ABC; }'
+      - '{ "Bundle ID" = "com.apple.inputmethod.Kotoeri.RomajiTyping"; "Input Mode" = "com.apple.inputmethod.Japanese"; InputSourceKind = "Input Mode"; }'
+      - '{ "Bundle ID" = "com.apple.inputmethod.Kotoeri.RomajiTyping"; InputSourceKind = "Keyboard Input Method"; }'
   - domain: HIToolbox
     key: AppleSelectedInputSources
     type: array
@@ -182,6 +171,10 @@ apple_defaults:
   ###############################################################################
   # Enable tap to click
   - domain: driver.AppleBluetoothMultitouch.trackpad
+    key: Clicking
+    type: int
+    value: 1
+  - domain: AppleMultitouchTrackpad
     key: Clicking
     type: int
     value: 1
@@ -220,3 +213,13 @@ apple_defaults:
       - "/System/Library/CoreServices/Menu Extras/Clock.menu"
       - "/System/Library/CoreServices/Menu Extras/TextInput.menu"
 
+microsoft_defaults:
+  # Vim Key Press Repeat
+  - domain: VScode
+    key: ApplePressAndHoldEnabled
+    type: bool
+    value: false
+  - domain: VSCodeInsiders
+    key: ApplePressAndHoldEnabled
+    type: bool
+    value: false
