@@ -11,6 +11,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
+      - run: sudo rm /usr/local/bin/aws
+      - run: sudo rm /usr/local/bin/aws_completer
       - name: init
         run: make init
       - name: ansible-lint
@@ -21,6 +23,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
+      - run: sudo rm /usr/local/bin/aws
+      - run: sudo rm /usr/local/bin/aws_completer
       - name: init
         run: make init
       - name: run ansible-playbook
