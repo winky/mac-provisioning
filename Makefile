@@ -10,7 +10,7 @@ init: ## Initialize Provisioning
 	@bash $(PROVISIONPATH)/scripts/init.sh
 
 deploy: ## Run ansible-playbook
-	@ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --ask-vault-pass
+	@cd $(PROVISIONPATH)/ansible && ansible-playbook site.yml --ask-vault-pass
 
 help: ## Display available targets and their descriptions
 	@echo "Usage: make [target]"
