@@ -11,6 +11,10 @@ brew "tmux"
 brew "tree"
 brew "jq"
 
+# python
+brew "ansible"
+brew "ansible-lint"
+
 cask "1password"
 cask "alfred"
 cask "bettertouchtool"
