@@ -6,9 +6,6 @@
     - role: dotfiles
       tags:
         - dotfiles
-    - role: brew
-      tags:
-        - brew
     - role: macos
       tags:
         - macos

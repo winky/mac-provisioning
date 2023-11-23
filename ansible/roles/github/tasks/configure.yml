@@ -20,6 +20,7 @@
 - name: Read SSH public key
   command: cat "{{ ssh_key_path }}/{{ ssh_key_name }}.pub"
   register: ssh_pub_key
+  when: not ssh_key.stat.exists
   failed_when: ssh_pub_key.rc not in [0, 1]
   changed_when: False
 
@@ -28,4 +29,5 @@
     name: "{{ ansible_facts.hostname }}"
     token: "{{ github_access_token }}"
     pubkey: "{{ ssh_pub_key.stdout }}"
+  when: not ssh_key.stat.exists
   tags: [ skip_test ]

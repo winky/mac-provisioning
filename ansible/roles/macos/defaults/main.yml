@@ -38,6 +38,7 @@ global_defaults:
     key: com.apple.mouse.tapBehavior
     type: int
     value: 1
+  # Tracking Speed
   - key: com.apple.trackpad.scaling
     type: int
     value: 5
@@ -60,11 +61,16 @@ apple_defaults:
   ###############################################################################
   # Dock
   ###############################################################################
-  # Dock: Magnification largesize
+  # Dock: Magnification tilesize
   - domain: dock
     key: tilesize
     type: float
     value: 35
+  # Dock: Magnification largesize
+  - domain: dock
+    key: largesize
+    type: float
+    value: 55
   # Dock; Position on screen
   - domain: dock
     key: orientation
@@ -80,11 +86,6 @@ apple_defaults:
     key: magnification
     type: bool
     value: true
-  # Dock: Magnification largesize
-  - domain: dock
-    key: largesize
-    type: float
-    value: 55
   # Wipe all (default) app icons from the Dock
   - domain: dock
     key: persistent-apps
@@ -124,7 +125,7 @@ apple_defaults:
     key: wvous-tl-corner
     type: int
     value: 2
-  # Hot Corners: top-left
+  # Hot Corners: top-right
   - domain: dock
     key: wvous-tl-modifier
     type: int
@@ -134,7 +135,7 @@ apple_defaults:
     key: wvous-bl-corner
     type: int
     value: 11
-  # Hot Corners: bottom-left
+  # Hot Corners: bottom-right
   - domain: dock
     key: wvous-bl-modifier
     type: int

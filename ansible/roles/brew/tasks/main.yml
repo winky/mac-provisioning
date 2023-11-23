@@ -1,8 +1,0 @@
-#
-# brew/tasks/main.yml
-# main tasks of brew
-#
-- import_tasks: install.yml
-  tags: [ brew-install ]
-- import_tasks: app.yml
-  tags: [ brew-app ]
