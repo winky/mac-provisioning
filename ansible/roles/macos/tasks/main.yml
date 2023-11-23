@@ -1,10 +1,13 @@
+---
 #
 # macos/tasks/main.yml
 # main task for macos settings
 #
-- import_tasks: network.yml
+- name: Network settings
+  ansible.builtin.import_tasks: network.yml
   tags:
     - network
-- import_tasks: defaults.yml
+- name: System settings
+  ansible.builtin.import_tasks: defaults.yml
   tags:
     - defaults

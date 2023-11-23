@@ -1,21 +1,26 @@
+---
 #
 # dotfiles/tasks/install.yml
 # Install dotfiles task
 #
 - name: Check dotfiles exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ dotfiles_path }}"
   register: dotfiles
 
-- block:
-  - name: Get dotfiles
-    git:
-      repo: "https://github.com/winky/dotfiles.git"
-      dest: "{{ dotfiles_path }}"
-
-  - name: Install dotfiles
-    command: make install
-    args:
-      chdir: "{{ dotfiles_path }}"
+- name: Install dotfiles
   when: not dotfiles.stat.exists
-  tags: [ skip_test ]
+  tags: [skip_test]
+  block:
+    - name: Get dotfiles
+      ansible.builtin.git:
+        repo: https://github.com/winky/dotfiles.git
+        version: HEAD # noqa: latest
+        dest: "{{ dotfiles_path }}"
+
+    - name: Install dotfiles
+      ansible.builtin.command: make install
+      args:
+        chdir: "{{ dotfiles_path }}"
+      register: install_dotfiles
+      changed_when: install_dotfiles.rc != 0

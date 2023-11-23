@@ -1,1 +1,2 @@
+---
 dotfiles_path: "{{ ansible_env.HOME }}/.dotfiles"

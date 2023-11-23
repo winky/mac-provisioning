@@ -1,8 +1,11 @@
+---
 #
 # macos/tasks/network.yml
 # macOS task for network settings
 #
 - name: DNS setting
-  command: networksetup -setdnsservers "{{ item }}" 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 2606:4700:4700::1111 2606:4700:4700::1001
-  with_items: "{{ network_service }}"
-  tags: [ DNS, setting, skip_test ]
+  ansible.builtin.command: networksetup -setdnsservers "{{ item }}" 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 2606:4700:4700::1111 2606:4700:4700::1001
+  with_items: "{{ macos_network_service }}"
+  register: dns_setting
+  changed_when: dns_setting.rc != 0
+  tags: [DNS, setting, skip_test]

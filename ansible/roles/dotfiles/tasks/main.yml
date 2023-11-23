@@ -1,5 +1,7 @@
+---
 #
 # dotfiles/tasks/main.yml
 # main task for dotfiles
 #
-- import_tasks: install.yml
+- name: Dotfiles Install
+  ansible.builtin.import_tasks: install.yml

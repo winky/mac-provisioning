@@ -1,7 +1,5 @@
+---
 parseable: true
 quiet: false
 use_default_rules: true
-skip_list:
-    - '301'
-    - '401'
 verbosity: 1

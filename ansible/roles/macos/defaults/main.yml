@@ -1,7 +1,8 @@
-network_service:
-    - "Wi-Fi"
+---
+macos_network_service:
+  - Wi-Fi
 
-global_defaults:
+macos_global_defaults:
   ###############################################################################
   # General
   ###############################################################################
@@ -16,11 +17,11 @@ global_defaults:
   - key: AppleLanguages
     type: array
     value:
-      - "en-JP"
-      - "ja-JP"
+      - en-JP
+      - ja-JP
   - key: AppleLocale
     type: string
-    value: "en_JP"
+    value: en_JP
   - key: AppleMeasurementUnits
     type: string
     value: Centimeters
@@ -57,7 +58,7 @@ global_defaults:
     type: float
     value: 1
 
-apple_defaults:
+macos_apple_defaults:
   ###############################################################################
   # Dock
   ###############################################################################
@@ -147,7 +148,7 @@ apple_defaults:
   - domain: menuextra.battery
     key: ShowPercent
     type: string
-    value: YES
+    value: true
   ###############################################################################
   # Keyboard
   ###############################################################################
@@ -208,13 +209,13 @@ apple_defaults:
     key: menuExtras
     type: array
     value:
-      - "/System/Library/CoreServices/Menu Extras/Bluetooth.menu"
-      - "/System/Library/CoreServices/Menu Extras/AirPort.menu"
-      - "/System/Library/CoreServices/Menu Extras/Battery.menu"
-      - "/System/Library/CoreServices/Menu Extras/Clock.menu"
-      - "/System/Library/CoreServices/Menu Extras/TextInput.menu"
+      - /System/Library/CoreServices/Menu Extras/Bluetooth.menu
+      - /System/Library/CoreServices/Menu Extras/AirPort.menu
+      - /System/Library/CoreServices/Menu Extras/Battery.menu
+      - /System/Library/CoreServices/Menu Extras/Clock.menu
+      - /System/Library/CoreServices/Menu Extras/TextInput.menu
 
-microsoft_defaults:
+macos_microsoft_defaults:
   # Vim Key Press Repeat
   - domain: VScode
     key: ApplePressAndHoldEnabled

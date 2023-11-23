@@ -1,39 +1,40 @@
+---
 #
 # macos/tasks/default.yml
 # macos defaults settings
 #
-- name: set NSGlobalDomain
-  osx_defaults:
+- name: Set NSGlobalDomain
+  community.general.osx_defaults:
     host: "{{ item.host | default() }}"
     key: "{{ item.key }}"
     type: "{{ item.type }}"
     value: "{{ item.value }}"
-  with_items: "{{ global_defaults }}"
+  with_items: "{{ macos_global_defaults }}"
   tags:
     - setting
 
-- name: set com.apple defaults
-  osx_defaults:
+- name: Set com.apple defaults
+  community.general.osx_defaults:
     host: "{{ item.host | default() }}"
-    domain: "com.apple.{{ item.domain }}"
+    domain: com.apple.{{ item.domain }}
     key: "{{ item.key }}"
     type: "{{ item.type }}"
     value: "{{ item.value | default() }}"
   register: defaults_out
   with_items:
-    - "{{ apple_defaults }}"
+    - "{{ macos_apple_defaults }}"
   tags:
     - setting
 
-- name: set com.microsoft defaults
-  osx_defaults:
+- name: Set com.microsoft defaults
+  community.general.osx_defaults:
     host: "{{ item.host | default() }}"
-    domain: "com.microsoft.{{ item.domain }}"
+    domain: com.microsoft.{{ item.domain }}
     key: "{{ item.key }}"
     type: "{{ item.type }}"
     value: "{{ item.value | default() }}"
   register: defaults_out
   with_items:
-    - "{{ microsoft_defaults }}"
+    - "{{ macos_microsoft_defaults }}"
   tags:
     - setting
