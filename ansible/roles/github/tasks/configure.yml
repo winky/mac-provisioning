@@ -17,6 +17,7 @@
   when: not ssh_key.stat.exists
   tags:
     - ssh_key
+    - skip_test
 
 - name: Read SSH public key
   ansible.builtin.command: cat "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub"
@@ -24,6 +25,8 @@
   when: not ssh_key.stat.exists
   failed_when: ssh_pub_key.rc not in [0, 1]
   changed_when: false
+  tags:
+    - skip_test
 
 - name: Add public keys to github
   community.general.github_key:
