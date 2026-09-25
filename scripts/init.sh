@@ -1,17 +1,40 @@
 #!/bin/bash
+#
+# init.sh
+# Set up Homebrew and apply the Brewfile.
+# Running this repeatedly must always produce the same result (idempotent).
+# The Xcode Command Line Tools are not checked here: `make` is itself a CLT shim, so
+# `make init` cannot reach this script without them, and the Homebrew installer pulls
+# them in on the rare path that does.
+#
+set -euo pipefail
 
-# This command installs the Xcode command line tools silently, without displaying any output.
-xcode-select --install > /dev/null
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROVISION_ROOT="$(dirname "${SCRIPT_DIR}")"
+BREW_PREFIX="/opt/homebrew"
 
-# This script checks if Homebrew is installed and installs it if not.
-# It also adds the necessary configuration to the user's .zprofile file and sets up the environment variables.
-# The script uses the Homebrew installation script from the official Homebrew GitHub repository.
-# If Homebrew is already installed, the script does nothing.
-if !(type "brew" > /dev/null 2>&1); then
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-  echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> /Users/winky/.zprofile
-  eval "$(/opt/homebrew/bin/brew shellenv)"
+if [ "$(uname)" != "Darwin" ]; then
+  echo "This script is only for macOS." >&2
+  exit 1
 fi
 
-brew bundle --no-lock --file Brewfile
+if [ "$(uname -m)" != "arm64" ]; then
+  echo "This script assumes Apple Silicon (${BREW_PREFIX})." >&2
+  exit 1
+fi
+
+if ! command -v brew > /dev/null 2>&1 && [ ! -x "${BREW_PREFIX}/bin/brew" ]; then
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+eval "$("${BREW_PREFIX}/bin/brew" shellenv)"
+
+# Append brew shellenv to .zprofile exactly once.
+ZPROFILE="${HOME}/.zprofile"
+SHELLENV_LINE="eval \"\$(${BREW_PREFIX}/bin/brew shellenv)\""
+if ! grep -Fqx "${SHELLENV_LINE}" "${ZPROFILE}" 2> /dev/null; then
+  echo "${SHELLENV_LINE}" >> "${ZPROFILE}"
+fi
+
+# --no-lock was removed in Homebrew 6.x (no lockfile is generated at all).
+brew bundle --file "${PROVISION_ROOT}/Brewfile"

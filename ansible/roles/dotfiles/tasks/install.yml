@@ -6,21 +6,22 @@
 - name: Check dotfiles exists
   ansible.builtin.stat:
     path: "{{ dotfiles_path }}"
-  register: dotfiles
+  register: dotfiles_dir
 
 - name: Install dotfiles
-  when: not dotfiles.stat.exists
+  when: not dotfiles_dir.stat.exists
   tags: [skip_test]
   block:
     - name: Get dotfiles
       ansible.builtin.git:
-        repo: https://github.com/winky/dotfiles.git
+        repo: "{{ dotfiles_repo }}"
         version: HEAD # noqa: latest
         dest: "{{ dotfiles_path }}"
 
     - name: Install dotfiles
-      ansible.builtin.command: make install
-      args:
+      ansible.builtin.command:
+        cmd: make install
         chdir: "{{ dotfiles_path }}"
-      register: install_dotfiles
-      changed_when: install_dotfiles.rc != 0
+      register: dotfiles_install
+      # Only runs when the dotfiles are absent, so running it always means a change.
+      changed_when: true

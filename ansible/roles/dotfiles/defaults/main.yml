@@ -1,2 +1,3 @@
 ---
-dotfiles_path: "{{ ansible_env.HOME }}/.dotfiles"
+dotfiles_path: "{{ ansible_facts.env.HOME }}/.dotfiles"
+dotfiles_repo: https://github.com/winky/dotfiles.git

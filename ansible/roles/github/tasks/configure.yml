@@ -1,37 +1,46 @@
 ---
 #
-# github/tasks/main.yml
+# github/tasks/configure.yml
 # configure task of github
 #
 - name: Check SSH key exists
   ansible.builtin.stat:
     path: "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}"
-  register: ssh_key
+  register: github_ssh_key
 
-- name: Create SSH key for user
-  ansible.builtin.user:
-    name: "{{ ansible_user }}"
-    generate_ssh_key: true
-    ssh_key_file: "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}"
-    ssh_key_bits: 4096
-  when: not ssh_key.stat.exists
-  tags:
-    - ssh_key
-    - skip_test
+- name: Create SSH key and register it to GitHub
+  when: not github_ssh_key.stat.exists
+  tags: [ssh_key, skip_test]
+  block:
+    - name: Ensure SSH directory exists
+      ansible.builtin.file:
+        path: "{{ github_ssh_key_path }}"
+        state: directory
+        mode: "0700"
 
-- name: Read SSH public key
-  ansible.builtin.command: cat "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub"
-  register: ssh_pub_key
-  when: not ssh_key.stat.exists
-  failed_when: ssh_pub_key.rc not in [0, 1]
-  changed_when: false
-  tags:
-    - skip_test
+    - name: Create SSH key for user
+      ansible.builtin.command:
+        cmd: >-
+          ssh-keygen {{ github_ssh_key_options }}
+          -f {{ github_ssh_key_path }}/{{ github_ssh_key_name }}
+          -N '' -C {{ ansible_facts.hostname }}
+        creates: "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}"
 
-- name: Add public keys to github
-  community.general.github_key:
-    name: "{{ ansible_facts.hostname }}"
-    token: "{{ github_access_token }}"
-    pubkey: "{{ ssh_pub_key.stdout }}"
-  when: not ssh_key.stat.exists
-  tags: [skip_test]
+    - name: Read SSH public key
+      ansible.builtin.slurp:
+        src: "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub"
+      register: github_ssh_pub_key
+
+    - name: Add public key to GitHub
+      community.general.github_key:
+        name: "{{ ansible_facts.hostname }}"
+        token: "{{ github_access_token }}"
+        pubkey: "{{ github_ssh_pub_key.content | b64decode | trim }}"
+      when: github_access_token | length > 0
+
+    - name: Notify that the public key must be registered manually
+      ansible.builtin.debug:
+        msg: >-
+          github_access_token is not set, so registering the key with GitHub was skipped.
+          Please register {{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub manually.
+      when: github_access_token | length == 0

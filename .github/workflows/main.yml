@@ -7,26 +7,28 @@ on:
 
 jobs:
   lint:
-    runs-on: macOS-latest
+    # Pinned: macos-latest is bumped without notice.
+    runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v1
-      - run: sudo rm /usr/local/bin/aws
-      - run: sudo rm /usr/local/bin/aws_completer
-      - name: init
-        run: make init
+      - uses: actions/checkout@v5
+      - name: Install ansible
+        run: brew install ansible ansible-lint
       - name: ansible-lint
-        run: ansible-lint -c ansible/.ansible-lint ansible/site.yml
+        run: make lint
 
   test:
-    runs-on: macOS-latest
+    runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v1
-      - run: sudo rm /usr/local/bin/aws
-      - run: sudo rm /usr/local/bin/aws_completer
-      - name: init
-        run: make init
-      - name: run ansible-playbook
-        run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags="skip_test"
-      - run: sudo spctl --master-disable
+      - uses: actions/checkout@v5
+      - name: Install ansible
+        run: brew install ansible
+      - name: Run ansible-playbook
+        run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test
+      - name: Run ansible-playbook again and assert idempotence
+        run: |
+          ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test \
+            | tee /tmp/idempotence.log
+          grep -q 'changed=0.*failed=0' /tmp/idempotence.log \
+            || { echo "playbook is not idempotent"; exit 1; }
