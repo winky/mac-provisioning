@@ -61,5 +61,6 @@ cd ansible && ansible-playbook site.yml --tags macos
 | Homebrew 導入時の sudo パスワード | インストーラが要求する |
 | cask の許可ダイアログ | アプリによって出る |
 | GitHub への公開鍵登録 | `github_access_token` が既定で空のため。playbook はスキップして手動登録を促す |
+| 入力ソース（キーボード / 日本語入力） | macOS が辞書の配列で保存しており `osx_defaults` では表現できないため。[docs/design-notes.md](docs/design-notes.md) を参照 |
 
 設計上の制約と、その判断の理由は [docs/design-notes.md](docs/design-notes.md) に残している。

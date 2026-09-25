@@ -104,6 +104,29 @@ Keychain から読む、という分担を想定している。
   （`networksetup -setdnsservers` は常に成功するため、無条件に実行すると毎回 changed になる）
 - CI で実行できないタスクには `skip_test` タグを付ける（dotfiles の clone、SSH 鍵の生成、DNS 設定）
 
+### 入力ソースを managed にしない
+
+`com.apple.HIToolbox` の `AppleEnabledInputSources` と `AppleSelectedInputSources` は、macOS が
+**辞書の配列**として保存する。
+
+```
+$ defaults read com.apple.HIToolbox AppleSelectedInputSources
+(
+        {
+        "Bundle ID" = "com.apple.PressAndHold";
+        InputSourceKind = "Non Keyboard Input Method";
+    },
+    ...
+)
+```
+
+`osx_defaults` は文字列の配列しか書けないため、辞書を模した文字列を書き込むことになる。結果として:
+
+- 書き込んだ値と読み出した値が一致せず、**毎回 changed になる**（冪等性が壊れる）
+- そもそも設定として反映されない
+
+2023年から入っていたが機能していなかったため削除した。入力ソースはシステム設定で行う。
+
 ## CI
 
 `macos-15` に固定している。`macos-latest` は予告なく更新され、破損したときに原因の切り分けが

@@ -153,22 +153,11 @@ macos_apple_defaults:
   ###############################################################################
   # Keyboard
   ###############################################################################
-  # Input Sources
-  - domain: HIToolbox
-    key: AppleEnabledInputSources
-    type: array
-    value:
-      - '{ "Bundle ID" = "com.apple.50onPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.apple.CharacterPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ InputSourceKind = "Keyboard Layout"; "KeyboardLayout ID" = 252; "KeyboardLayout Name" = ABC; }'
-      - '{ "Bundle ID" = "com.apple.inputmethod.Kotoeri.RomajiTyping"; "Input Mode" = "com.apple.inputmethod.Japanese"; InputSourceKind = "Input Mode"; }'
-      - '{ "Bundle ID" = "com.apple.inputmethod.Kotoeri.RomajiTyping"; InputSourceKind = "Keyboard Input Method"; }'
-  - domain: HIToolbox
-    key: AppleSelectedInputSources
-    type: array
-    value:
-      - '{ "Bundle ID" = "com.apple.inputmethod.EmojiFunctionRowItem"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Roman"; InputSourceKind = "Input Mode"; }'
+  # Input sources are not managed here. macOS stores AppleEnabledInputSources and
+  # AppleSelectedInputSources as arrays of dictionaries, which osx_defaults cannot
+  # express: it writes arrays of strings, so the comparison never matches (the task
+  # reports changed on every run) and the setting never takes effect. Configure them
+  # in System Settings instead.
   ###############################################################################
   # Trackpad
   ###############################################################################
