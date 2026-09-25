@@ -17,8 +17,15 @@ Apple Silicon の Mac を Ansible でセットアップする。
 curl -fsSL https://raw.githubusercontent.com/winky/mac-provisioning/master/scripts/install.sh | bash
 ```
 
-ghq のルート配下（既定では `~/src/github.com/winky/mac-provisioning`）に clone し、
-`make all` を実行する。別の場所に置くなら `GHQ_ROOT` を渡す。
+ghq のルート配下（既定では `~/src/github.com/winky/mac-provisioning`）に clone し、`make init`
+を実行する。別の場所に置くなら `GHQ_ROOT` を渡す。
+
+続いて2つのコマンドを実行する。`gh` は `make init` で入るため、この順序になる。
+
+```sh
+gh auth login --git-protocol ssh      # 認証 ＋ SSH 鍵の生成・登録
+make -C <repo> deploy                 # playbook の適用
+```
 
 ### clone 済みの場合
 
@@ -44,7 +51,7 @@ make deploy  # 適用
 Brewfile              brew / cask のパッケージ
 scripts/install.sh    新しい Mac で最初に実行する
 scripts/init.sh       Homebrew と Brewfile
-ansible/site.yml      dotfiles / macos / github の3ロール
+ansible/site.yml      dotfiles / macos / claude_config の3ロール
 ```
 
 ロール単位で流すときは tag を使う。
@@ -60,7 +67,7 @@ cd ansible && ansible-playbook site.yml --tags macos
 | Xcode Command Line Tools の同意 | GUI の同意が必要。`install.sh` が検知してインストーラを起動し、完了後の再実行を促す |
 | Homebrew 導入時の sudo パスワード | インストーラが要求する |
 | cask の許可ダイアログ | アプリによって出る |
-| `gh` への `admin:public_key` スコープ付与 | 公開鍵の登録に `gh ssh-key add` を使うため。`gh auth refresh -s admin:public_key` を一度だけ実行する。未付与なら playbook が案内する |
+| `gh` の認証（`gh auth login --git-protocol ssh`） | 対話が必須。認証と同時に SSH 鍵の生成・登録も行う。private な `claude-config` の取得もこれに依存する |
 | 入力ソース（キーボード / 日本語入力） | macOS が辞書の配列で保存しており `osx_defaults` では表現できないため。[docs/design-notes.md](docs/design-notes.md) を参照 |
 
 設計上の制約と、その判断の理由は [docs/design-notes.md](docs/design-notes.md) に残している。

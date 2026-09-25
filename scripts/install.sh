@@ -2,7 +2,11 @@
 #
 # install.sh
 # The first script to run on a new Mac.
-# Clones this repository under the ghq root and runs make all.
+# Clones this repository under the ghq root and runs make init.
+#
+# It stops after init rather than running make all: `gh auth login` has to happen
+# between init (which installs gh) and deploy (which needs it to reach the private
+# claude-config repository), and that login is interactive.
 #
 set -euo pipefail
 
@@ -51,4 +55,16 @@ if [ ! -d "${PROVISION_ROOT}" ]; then
   git clone "${REPO_URL}" "${PROVISION_ROOT}"
 fi
 
-make -C "${PROVISION_ROOT}" all
+make -C "${PROVISION_ROOT}" init
+
+cat <<MSG
+
+Homebrew and the Brewfile packages are in place. Two steps remain:
+
+  1. gh auth login --git-protocol ssh
+     Authenticates gh and registers an SSH key for this machine.
+
+  2. make -C ${PROVISION_ROOT} deploy
+     Applies the playbook, including the private claude-config repository.
+
+MSG

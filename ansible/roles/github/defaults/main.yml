@@ -1,5 +1,0 @@
----
-github_ssh_key_path: "{{ ansible_facts.env.HOME }}/.ssh"
-github_ssh_key_name: id_rsa
-# Switch to "-t ed25519" via host_vars on new machines (Phase 2).
-github_ssh_key_options: "-t rsa -b 4096"

@@ -1,9 +1,0 @@
----
-#
-# github/tasks/main.yml
-# main task for github
-#
-- name: Github Settings
-  ansible.builtin.import_tasks: configure.yml
-  tags:
-    - configure

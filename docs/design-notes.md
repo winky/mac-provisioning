@@ -13,7 +13,7 @@
 
 | 入口 | 経路 |
 |---|---|
-| `install.sh`（curl で取得） | clone → `make all` → `init.sh` |
+| `install.sh`（curl で取得） | clone → `make init` → `init.sh` |
 | `make init` | `init.sh` のみ |
 
 `install.sh` はリポジトリが存在しない時点で動くため、共通のシェル関数を `source` できない。
@@ -78,31 +78,55 @@ Brewfile の `brew "ansible"` は full パッケージで、`community.general` 
 ansible-core のバージョンは実行側と lint 側で一致しない（別 formula のため）。パッチ差なので
 実害は出ていないが、完全に揃えるならリポジトリ内の単一 venv に両方を入れる必要がある。
 
-## GitHub トークンを持たない
+## SSH 鍵を playbook で扱わない
 
-以前は ansible-vault で暗号化した Personal Access Token を `defaults/main.yml` に埋め込み、
-`community.general.github_key` で公開鍵を登録していた。両方とも廃止した。
+以前は ansible-vault で暗号化した Personal Access Token を埋め込み、`community.general.github_key`
+で公開鍵を登録していた。さらにその前段で `ssh-keygen` による鍵生成も行っていた。すべて廃止した。
 
-公開鍵の登録は `gh ssh-key add` で行う。**`gh` は Brewfile に入っており、どのマシンでも
-認証することになる**ため、専用の PAT を持つと保管とローテーションの対象が1つ増えるだけになる。
+`gh auth login --git-protocol ssh` が、認証と同時に鍵の生成とアップロードを行う。
 
-`admin:public_key` スコープが必要で、一度だけ `gh auth refresh -s admin:public_key` を実行する。
-`gh auth login` 自体が対話なので、自動化できない項目が増えるわけではない。
+> Specifying `ssh` for the git protocol will detect existing SSH keys to upload,
+> prompting to create and upload a new key if one is not found.
 
-スコープの有無を `gh auth status` の出力から判定してはいない。この出力がどちらのストリームに
-出るかが版によって異なるため。実行して失敗したら、必要なコマンドを添えて案内する形にしている。
+この認証は対話が必須で避けられない。同じことを playbook で再実装しても自動化の範囲は広がらず、
+コードと秘密情報が増えるだけになる。
 
-なお無人実行するジョブ（Slack / Backlog）のトークンは別の話で、1Password CLI（`op read`）は
-Touch ID / GUI 連携が前提のため無人では呼べない。プロビジョニング時（人が居る）に 1Password から
-取り出して Keychain に入れ、無人実行時は Keychain から読む分担を想定している。
+副産物として、GitHub 用のトークンを保管・ローテーションする必要がなくなった。無人実行するジョブ
+（Slack / Backlog）のトークンは別の話で、1Password CLI（`op read`）は Touch ID / GUI 連携が前提の
+ため無人では呼べない。プロビジョニング時（人が居る）に 1Password から取り出して Keychain に入れ、
+無人実行時は Keychain から読む分担を想定している。
 
-## SSH 鍵の生成に user モジュールを使わない
+## セットアップの順序と認証の境界
 
-`ansible.builtin.user` の `generate_ssh_key` は macOS では root が必要で、さらに
-`ansible_user` を参照する書き方は local connection では未定義になる。`ssh-keygen` を
-`creates` 付きの `command` で呼んでいる。
+対象リポジトリの公開状態はこうなっている。
 
-鍵の種類は `github_ssh_key_options` で変数化してある（既定は既存マシンに合わせて `-t rsa -b 4096`）。
+| リポジトリ | 公開状態 |
+|---|---|
+| `mac-provisioning` | public |
+| `dotfiles` | public |
+| `claude-config` | **private** |
+
+private なのは `claude-config` だけなので、**認証が必要になる地点は1箇所に閉じている**。順序は
+そこを境に分ける。
+
+1. Xcode Command Line Tools〔対話〕
+2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
+3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
+4. `make deploy` — dotfiles / macos / claude_config
+
+`install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
+入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
+
+`claude_config` ロールは `git ls-remote` で到達性を確認し、届かなければ実行すべきコマンドを表示して
+継続する（play は失敗させない）。順序を守れなかった場合や `make all` を使った場合でも、認証後の
+`make deploy` で完了する。
+
+`claude-config` の取得には SSH URL を使う。`gh auth login --git-protocol ssh` が鍵を登録するので、
+`gh auth git-credential` ヘルパー（`~/.config/git` 経由で設定される）が配置済みかどうかに依存しない。
+
+なお `dotfiles` ロールは `make install` だけを呼び、`make homeConfig` は呼ばない。そのため
+`~/.config/git` は playbook では配置されず、`ghq.root` も設定されない。`claude_config` ロールが
+ghq ルートを自前の変数（既定 `~/src`、`install.sh` と同じ）で持っているのはこのためである。
 
 ## 冪等性
 
@@ -110,7 +134,7 @@ Touch ID / GUI 連携が前提のため無人では呼べない。プロビジ�
 
 - DNS 設定は `networksetup -getdnsservers` の出力と比較し、差があるときだけ実行する
   （`networksetup -setdnsservers` は常に成功するため、無条件に実行すると毎回 changed になる）
-- CI で実行できないタスクには `skip_test` タグを付ける（dotfiles の clone、SSH 鍵の生成、DNS 設定）
+- CI で実行できないタスクには `skip_test` タグを付ける（dotfiles の clone、DNS 設定、`claude_config` の全タスク）
 
 ### 入力ソースを managed にしない
 
