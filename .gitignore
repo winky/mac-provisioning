@@ -1,1 +1,7 @@
 Brewfile.lock.json
+
+# Claude Code scratch directory
+.claude/.cc-writes/
+
+# Local working notes, not part of the project
+notes/
