@@ -9,6 +9,6 @@
     - role: macos
       tags:
         - macos
-    - role: github
+    - role: claude_config
       tags:
-        - github
+        - claude_config

@@ -1,0 +1,52 @@
+---
+#
+# claude_config/tasks/install.yml
+# Place the global Claude Code configuration
+#
+# claude-config is a private repository, so this role can only do its work once
+# `gh auth login --git-protocol ssh` has registered an SSH key. Probe first and report
+# what to run rather than failing the play: the next `make deploy` completes it.
+# The git module has no equivalent: it clones, and this only needs to know whether the
+# remote can be reached at all.
+- name: Check whether the claude-config repository is reachable # noqa: command-instead-of-module
+  ansible.builtin.command:
+    cmd: git ls-remote --exit-code {{ claude_config_repo }} HEAD
+  register: claude_config_remote
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags: [skip_test]
+
+- name: Place claude-config
+  when: claude_config_remote.rc | default(1) == 0
+  tags: [skip_test]
+  block:
+    - name: Get claude-config
+      ansible.builtin.git:
+        repo: "{{ claude_config_repo }}"
+        version: HEAD # noqa: latest
+        dest: "{{ claude_config_path }}"
+        update: false
+
+    - name: Ensure the Claude Code directory exists
+      ansible.builtin.file:
+        path: "{{ claude_config_home }}"
+        state: directory
+        mode: "0755"
+
+    - name: Link claude-config into the Claude Code directory
+      ansible.builtin.file:
+        src: "{{ claude_config_path }}/{{ item }}"
+        dest: "{{ claude_config_home }}/{{ item }}"
+        state: link
+        force: true
+      loop: "{{ claude_config_links }}"
+
+- name: Notify that claude-config could not be reached
+  ansible.builtin.debug:
+    msg: >-
+      {{ claude_config_repo }} is private and could not be reached.
+      Run `gh auth login --git-protocol ssh` to register an SSH key,
+      then re-run `make deploy`.
+  when: claude_config_remote.rc | default(1) != 0
+  tags: [skip_test]

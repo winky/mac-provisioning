@@ -1,0 +1,17 @@
+---
+# Resolved the same way scripts/install.sh resolves it, so both agree on a machine
+# where ~/.config/git (and with it ghq.root) has not been linked yet.
+claude_config_ghq_root: "{{ ansible_facts.env.HOME }}/src"
+
+# SSH rather than HTTPS: `gh auth login --git-protocol ssh` registers a key as part of
+# the one interactive step this repository already needs, so it does not depend on the
+# gh credential helper being in place.
+claude_config_repo: git@github.com:winky/claude-config.git
+claude_config_path: "{{ claude_config_ghq_root }}/github.com/winky/claude-config"
+
+claude_config_home: "{{ ansible_facts.env.HOME }}/.claude"
+claude_config_links:
+  - settings.json
+  - CLAUDE.md
+  - skills
+  - statusline-command.sh
