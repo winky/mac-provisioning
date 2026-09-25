@@ -7,8 +7,11 @@ on:
 
 jobs:
   lint:
-    # Pinned: macos-latest is bumped without notice.
-    runs-on: macos-15
+    # Pinned rather than macos-latest, which is bumped without notice: a break should be
+    # attributable to the change that caused it. Pinned to the major version this
+    # repository actually targets -- an older image would hide the kind of breakage it
+    # was just repaired for (a renamed spctl flag, defaults current macOS ignores).
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v5
@@ -18,7 +21,7 @@ jobs:
         run: make lint
 
   test:
-    runs-on: macos-15
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v5
