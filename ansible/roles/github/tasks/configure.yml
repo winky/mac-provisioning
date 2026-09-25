@@ -26,21 +26,25 @@
           -N '' -C {{ ansible_facts.hostname }}
         creates: "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}"
 
-    - name: Read SSH public key
-      ansible.builtin.slurp:
-        src: "{{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub"
-      register: github_ssh_pub_key
-
-    - name: Add public key to GitHub
-      community.general.github_key:
-        name: "{{ ansible_facts.hostname }}"
-        token: "{{ github_access_token }}"
-        pubkey: "{{ github_ssh_pub_key.content | b64decode | trim }}"
-      when: github_access_token | length > 0
+    # Registered through gh rather than a Personal Access Token of our own: gh is in
+    # the Brewfile and gets authenticated on every machine anyway, so a second
+    # credential would only be one more thing to store and rotate.
+    # Attempt it and report, rather than parsing `gh auth status` for the
+    # admin:public_key scope -- which stream that output lands on varies by version.
+    - name: Register the public key with GitHub
+      ansible.builtin.command:
+        cmd: >-
+          gh ssh-key add {{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub
+          --title {{ ansible_facts.hostname }}
+      register: github_ssh_key_add
+      changed_when: github_ssh_key_add.rc == 0
+      failed_when: false
 
     - name: Notify that the public key must be registered manually
       ansible.builtin.debug:
         msg: >-
-          github_access_token is not set, so registering the key with GitHub was skipped.
-          Please register {{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub manually.
-      when: github_access_token | length == 0
+          Could not register the key with gh:
+          {{ github_ssh_key_add.stderr | default('') | trim }}
+          Grant the scope once with `gh auth refresh -s admin:public_key` and re-run,
+          or add {{ github_ssh_key_path }}/{{ github_ssh_key_name }}.pub in the GitHub UI.
+      when: github_ssh_key_add.rc != 0

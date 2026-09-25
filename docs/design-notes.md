@@ -78,15 +78,23 @@ Brewfile の `brew "ansible"` は full パッケージで、`community.general` 
 ansible-core のバージョンは実行側と lint 側で一致しない（別 formula のため）。パッチ差なので
 実害は出ていないが、完全に揃えるならリポジトリ内の単一 venv に両方を入れる必要がある。
 
-## ansible-vault を使わない
+## GitHub トークンを持たない
 
-`github_access_token` は既定で空にしている。以前は ansible-vault で暗号化した PAT を
-`defaults/main.yml` に埋め込んでいたが廃止した。空のままだと公開鍵の GitHub 登録をスキップし、
-手動登録を促す。
+以前は ansible-vault で暗号化した Personal Access Token を `defaults/main.yml` に埋め込み、
+`community.general.github_key` で公開鍵を登録していた。両方とも廃止した。
 
-無人実行するジョブから 1Password CLI（`op read`）は呼べない（Touch ID / GUI 連携が前提）。
-プロビジョニング時（人が居る）に 1Password から取り出して Keychain に入れ、無人実行時は
-Keychain から読む、という分担を想定している。
+公開鍵の登録は `gh ssh-key add` で行う。**`gh` は Brewfile に入っており、どのマシンでも
+認証することになる**ため、専用の PAT を持つと保管とローテーションの対象が1つ増えるだけになる。
+
+`admin:public_key` スコープが必要で、一度だけ `gh auth refresh -s admin:public_key` を実行する。
+`gh auth login` 自体が対話なので、自動化できない項目が増えるわけではない。
+
+スコープの有無を `gh auth status` の出力から判定してはいない。この出力がどちらのストリームに
+出るかが版によって異なるため。実行して失敗したら、必要なコマンドを添えて案内する形にしている。
+
+なお無人実行するジョブ（Slack / Backlog）のトークンは別の話で、1Password CLI（`op read`）は
+Touch ID / GUI 連携が前提のため無人では呼べない。プロビジョニング時（人が居る）に 1Password から
+取り出して Keychain に入れ、無人実行時は Keychain から読む分担を想定している。
 
 ## SSH 鍵の生成に user モジュールを使わない
 

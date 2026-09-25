@@ -3,8 +3,3 @@ github_ssh_key_path: "{{ ansible_facts.env.HOME }}/.ssh"
 github_ssh_key_name: id_rsa
 # Switch to "-t ed25519" via host_vars on new machines (Phase 2).
 github_ssh_key_options: "-t rsa -b 4096"
-# GitHub Personal Access Token。
-# ansible-vault has been dropped. Phase 3 supplies this from the secrets role
-# (1Password / Keychain). While empty, registering the public key with GitHub is
-# skipped and the user is asked to register it manually.
-github_access_token: ""

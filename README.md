@@ -60,7 +60,7 @@ cd ansible && ansible-playbook site.yml --tags macos
 | Xcode Command Line Tools の同意 | GUI の同意が必要。`install.sh` が検知してインストーラを起動し、完了後の再実行を促す |
 | Homebrew 導入時の sudo パスワード | インストーラが要求する |
 | cask の許可ダイアログ | アプリによって出る |
-| GitHub への公開鍵登録 | `github_access_token` が既定で空のため。playbook はスキップして手動登録を促す |
+| `gh` への `admin:public_key` スコープ付与 | 公開鍵の登録に `gh ssh-key add` を使うため。`gh auth refresh -s admin:public_key` を一度だけ実行する。未付与なら playbook が案内する |
 | 入力ソース（キーボード / 日本語入力） | macOS が辞書の配列で保存しており `osx_defaults` では表現できないため。[docs/design-notes.md](docs/design-notes.md) を参照 |
 
 設計上の制約と、その判断の理由は [docs/design-notes.md](docs/design-notes.md) に残している。
