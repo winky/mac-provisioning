@@ -5,6 +5,16 @@
 dotfiles_ghq_root: "{{ ghq_root | default(ansible_facts.env.HOME ~ '/src') }}"
 dotfiles_path: "{{ dotfiles_ghq_root }}/github.com/winky/dotfiles"
 dotfiles_repo: https://github.com/winky/dotfiles.git
+
+# Representatives of what `make deploy` links into the home directory. The repository
+# decides the full set with a `.??*` wildcard, so these are only the ones checked to
+# decide whether the target needs running.
+dotfiles_home_links:
+  - .zshrc
+  - .vimrc
+  - .tmux.conf
+  - .zinit
+
 # Paths under ~/.config that `make homeConfig` links, relative to it.
 dotfiles_xdg_configs:
   - git
