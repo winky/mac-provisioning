@@ -96,6 +96,34 @@ ansible-core のバージョンは実行側と lint 側で一致しない（別 
 ため無人では呼べない。プロビジョニング時（人が居る）に 1Password から取り出して Keychain に入れ、
 無人実行時は Keychain から読む分担を想定している。
 
+### gh が生成する鍵
+
+gh 2.93.0 のソースで確認した仕様。
+
+| 項目 | 値 |
+|---|---|
+| 種類 | ed25519 |
+| パス | `~/.ssh/id_ed25519` |
+| コメント | 空 |
+| 既存の公開鍵がある場合 | 生成せず、どれをアップロードするか尋ねる |
+
+```go
+// pkg/ssh/ssh_keys.go
+exec.Command(keygenExe, "-t", "ed25519", "-C", "", "-N", passphrase, "-f", keyFile)
+// pkg/cmd/auth/shared/login_flow.go
+opts.sshContext.GenerateSSHKey("id_ed25519", passphrase)
+```
+
+**gh が登録するのは認証用の鍵だけである。** GitHub がコミットを Verified と表示するには、署名用として
+別途登録する必要がある。
+
+```sh
+gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)" --type signing
+```
+
+dotfiles が `user.signingkey = ~/.ssh/id_ed25519.pub` を指定しており、`commit.gpgsign` は無条件なので、
+**この登録を飛ばすと署名は付くが Verified にならず、鍵自体が無いマシンでは一切コミットできない。**
+
 ## dotfiles は ghq 配下に置く
 
 `dotfiles_path` は ghq のルート配下（既定 `~/src/github.com/winky/dotfiles`）を指す。以前は
@@ -149,9 +177,10 @@ private なのは `claude-config` だけなので、**認証が必要になる�
 `claude-config` の取得には SSH URL を使う。`gh auth login --git-protocol ssh` が鍵を登録するので、
 `gh auth git-credential` ヘルパー（`~/.config/git` 経由で設定される）が配置済みかどうかに依存しない。
 
-なお `dotfiles` ロールは `make install` だけを呼び、`make homeConfig` は呼ばない。そのため
-`~/.config/git` は playbook では配置されず、`ghq.root` も設定されない。`claude_config` ロールが
-ghq ルートを自前の変数（既定 `~/src`、`install.sh` と同じ）で持っているのはこのためである。
+ghq ルートは各ロールが自前の変数（既定 `~/src`、`install.sh` と同じ）で持つ。`dotfiles` ロールが
+`~/.config/git` を配置するのは同じ play の中なので、`claude_config` ロールが `git config --get ghq.root`
+を読む形にはできるが、その値はチルダが展開されないまま返るため（後述の「ghq ルートの解決」を参照）
+変数で持つ方が単純である。
 
 ## 冪等性
 
