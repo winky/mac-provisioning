@@ -11,6 +11,8 @@ claude_config_repo: git@github.com:winky/claude-config.git
 claude_config_path: "{{ claude_config_ghq_root }}/github.com/winky/claude-config"
 
 claude_config_home: "{{ ansible_facts.env.HOME }}/.claude"
+# What the repository's make install links into ~/.claude. Listed here to decide
+# whether the target needs running, not to create the links.
 claude_config_links:
   - settings.json
   - CLAUDE.md

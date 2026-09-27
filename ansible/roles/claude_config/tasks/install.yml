@@ -6,6 +6,7 @@
 # claude-config is a private repository, so this role can only do its work once
 # `gh auth login --git-protocol ssh` has registered an SSH key. Probe first and report
 # what to run rather than failing the play: the next `make deploy` completes it.
+#
 # The git module has no equivalent: it clones, and this only needs to know whether the
 # remote can be reached at all.
 - name: Check whether the claude-config repository is reachable # noqa: command-instead-of-module
@@ -28,19 +29,52 @@
         dest: "{{ claude_config_path }}"
         update: false
 
+    # The repository's make install links into $(HOME)/.claude without creating it.
     - name: Ensure the Claude Code directory exists
       ansible.builtin.file:
         path: "{{ claude_config_home }}"
         state: directory
         mode: "0755"
 
-    - name: Link claude-config into the Claude Code directory
-      ansible.builtin.file:
-        src: "{{ claude_config_path }}/{{ item }}"
-        dest: "{{ claude_config_home }}/{{ item }}"
-        state: link
-        force: true
+    - name: Check where the Claude Code config links point
+      ansible.builtin.stat:
+        path: "{{ claude_config_home }}/{{ item }}"
+      register: claude_config_link_targets
       loop: "{{ claude_config_links }}"
+
+    # `ln -sfn` cannot replace a real directory, and Claude Code creates
+    # ~/.claude/skills for the skills it syncs from claude.ai. Report it instead of
+    # letting make fail.
+    - name: Notify that a path has to be moved aside first
+      ansible.builtin.debug:
+        msg: >-
+          {{ claude_config_home }}/{{ item.item }} exists but is not a symlink, so it
+          cannot be replaced. Move it aside
+          (mv {{ claude_config_home }}/{{ item.item }} {{ claude_config_home }}/{{ item.item }}.bak)
+          and re-run.
+      loop: "{{ claude_config_link_targets.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when:
+        - item.stat.exists
+        - not item.stat.islnk
+
+    # make install resolves the repository from the working directory, not from the
+    # Makefile's own location, so chdir is required rather than `make -C`.
+    - name: Link claude-config into the Claude Code directory
+      ansible.builtin.command:
+        cmd: make install
+        chdir: "{{ claude_config_path }}"
+      changed_when: true
+      when:
+        - claude_config_link_targets.results
+          | selectattr('stat.exists')
+          | rejectattr('stat.islnk')
+          | list | length == 0
+        - claude_config_link_targets.results
+          | map(attribute='stat.lnk_source', default='')
+          | reject('match', claude_config_path ~ '/')
+          | list | length > 0
 
 - name: Notify that claude-config could not be reached
   ansible.builtin.debug:
