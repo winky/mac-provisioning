@@ -6,21 +6,68 @@
 - name: Check dotfiles exists
   ansible.builtin.stat:
     path: "{{ dotfiles_path }}"
-  register: dotfiles
+  register: dotfiles_dir
 
-- name: Install dotfiles
-  when: not dotfiles.stat.exists
+- name: Get dotfiles
+  ansible.builtin.git:
+    repo: "{{ dotfiles_repo }}"
+    version: HEAD # noqa: latest
+    dest: "{{ dotfiles_path }}"
+  when: not dotfiles_dir.stat.exists
   tags: [skip_test]
-  block:
-    - name: Get dotfiles
-      ansible.builtin.git:
-        repo: https://github.com/winky/dotfiles.git
-        version: HEAD # noqa: latest
-        dest: "{{ dotfiles_path }}"
 
-    - name: Install dotfiles
-      ansible.builtin.command: make install
-      args:
-        chdir: "{{ dotfiles_path }}"
-      register: install_dotfiles
-      changed_when: install_dotfiles.rc != 0
+# `make install` is not used: it runs `clean`, which deletes the home symlinks before
+# recreating them, then `update`, which pulls master, and ends with `exec $SHELL` --
+# which replaces make with a shell that has no tty here. `deploy` and `homeConfig` are
+# the targets that do the linking, and both only use `ln -sfnv`.
+#
+# Both run outside the clone above, so a machine that already has the dotfiles is
+# repaired too: after moving the ghq root, every link in the home directory pointed at
+# the old path, and nothing in this role would have noticed.
+- name: Check whether the dotfiles are available
+  ansible.builtin.stat:
+    path: "{{ dotfiles_path }}"
+  register: dotfiles_dir_current
+  tags: [skip_test]
+
+- name: Check where the home links point
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/{{ item }}"
+  register: dotfiles_home_link_targets
+  loop: "{{ dotfiles_home_links }}"
+  when: dotfiles_dir_current.stat.exists
+  tags: [skip_test]
+
+- name: Link the dotfiles into the home directory
+  ansible.builtin.command:
+    cmd: make deploy
+    chdir: "{{ dotfiles_path }}"
+  changed_when: true
+  when:
+    - dotfiles_dir_current.stat.exists
+    - dotfiles_home_link_targets.results
+      | map(attribute='stat.lnk_source', default='')
+      | reject('match', dotfiles_path ~ '/')
+      | list | length > 0
+  tags: [skip_test]
+
+- name: Check where the XDG config links point
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.config/{{ item }}"
+  register: dotfiles_xdg_links
+  loop: "{{ dotfiles_xdg_configs }}"
+  when: dotfiles_dir_current.stat.exists
+  tags: [skip_test]
+
+- name: Link the XDG configs
+  ansible.builtin.command:
+    cmd: make homeConfig
+    chdir: "{{ dotfiles_path }}"
+  changed_when: true
+  when:
+    - dotfiles_dir_current.stat.exists
+    - dotfiles_xdg_links.results
+      | map(attribute='stat.lnk_source', default='')
+      | reject('match', dotfiles_path ~ '/')
+      | list | length > 0
+  tags: [skip_test]

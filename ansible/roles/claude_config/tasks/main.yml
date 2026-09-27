@@ -1,0 +1,9 @@
+---
+#
+# claude_config/tasks/main.yml
+# main task for the global Claude Code configuration
+#
+- name: Claude Code configuration
+  ansible.builtin.import_tasks: install.yml
+  tags:
+    - install

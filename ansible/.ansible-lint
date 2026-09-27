@@ -1,5 +1,5 @@
 ---
-parseable: true
-quiet: false
-use_default_rules: true
-verbosity: 1
+# ansible-lint configuration
+# https://ansible.readthedocs.io/projects/lint/configuring/
+exclude_paths:
+  - .github/

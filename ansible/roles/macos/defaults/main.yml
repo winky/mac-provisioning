@@ -2,6 +2,14 @@
 macos_network_service:
   - Wi-Fi
 
+macos_dns_servers:
+  - "1.1.1.1"
+  - "1.0.0.1"
+  - "8.8.8.8"
+  - "8.8.4.4"
+  - "2606:4700:4700::1111"
+  - "2606:4700:4700::1001"
+
 macos_global_defaults:
   ###############################################################################
   # General
@@ -101,14 +109,6 @@ macos_apple_defaults:
     key: mru-spaces
     type: bool
     value: false
-  # Dashboard:
-  #  1: Off
-  #  2: As Space
-  #  3: As Overlay
-  - domain: dashboard
-    key: dashboard-enabled-state
-    type: int
-    value: 3
   # Hot Corners:
   #  0: no-op
   #  2: Mission Control
@@ -126,7 +126,7 @@ macos_apple_defaults:
     key: wvous-tl-corner
     type: int
     value: 2
-  # Hot Corners: top-right
+  # Hot Corners: top-left modifier
   - domain: dock
     key: wvous-tl-modifier
     type: int
@@ -136,7 +136,7 @@ macos_apple_defaults:
     key: wvous-bl-corner
     type: int
     value: 11
-  # Hot Corners: bottom-right
+  # Hot Corners: bottom-left modifier
   - domain: dock
     key: wvous-bl-modifier
     type: int
@@ -145,29 +145,19 @@ macos_apple_defaults:
   # Energy Saver
   ###############################################################################
   # Show percent of battery on menu bar
-  - domain: menuextra.battery
-    key: ShowPercent
-    type: string
+  # Moved to com.apple.controlcenter in macOS 11 and later
+  - domain: controlcenter
+    key: BatteryShowPercentage
+    type: bool
     value: true
   ###############################################################################
   # Keyboard
   ###############################################################################
-  # Input Sources
-  - domain: HIToolbox
-    key: AppleEnabledInputSources
-    type: array
-    value:
-      - '{ "Bundle ID" = "com.apple.50onPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.apple.CharacterPaletteIM"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ InputSourceKind = "Keyboard Layout"; "KeyboardLayout ID" = 252; "KeyboardLayout Name" = ABC; }'
-      - '{ "Bundle ID" = "com.apple.inputmethod.Kotoeri.RomajiTyping"; "Input Mode" = "com.apple.inputmethod.Japanese"; InputSourceKind = "Input Mode"; }'
-      - '{ "Bundle ID" = "com.apple.inputmethod.Kotoeri.RomajiTyping"; InputSourceKind = "Keyboard Input Method"; }'
-  - domain: HIToolbox
-    key: AppleSelectedInputSources
-    type: array
-    value:
-      - '{ "Bundle ID" = "com.apple.inputmethod.EmojiFunctionRowItem"; InputSourceKind = "Non Keyboard Input Method"; }'
-      - '{ "Bundle ID" = "com.google.inputmethod.Japanese"; "Input Mode" = "com.apple.inputmethod.Roman"; InputSourceKind = "Input Mode"; }'
+  # Input sources are not managed here. macOS stores AppleEnabledInputSources and
+  # AppleSelectedInputSources as arrays of dictionaries, which osx_defaults cannot
+  # express: it writes arrays of strings, so the comparison never matches (the task
+  # reports changed on every run) and the setting never takes effect. Configure them
+  # in System Settings instead.
   ###############################################################################
   # Trackpad
   ###############################################################################
@@ -205,15 +195,6 @@ macos_apple_defaults:
     key: AppleShowAllFiles
     type: bool
     value: true
-  - domain: systemuiserver
-    key: menuExtras
-    type: array
-    value:
-      - /System/Library/CoreServices/Menu Extras/Bluetooth.menu
-      - /System/Library/CoreServices/Menu Extras/AirPort.menu
-      - /System/Library/CoreServices/Menu Extras/Battery.menu
-      - /System/Library/CoreServices/Menu Extras/Clock.menu
-      - /System/Library/CoreServices/Menu Extras/TextInput.menu
 
 macos_microsoft_defaults:
   # Vim Key Press Repeat

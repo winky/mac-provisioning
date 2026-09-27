@@ -20,7 +20,6 @@
     key: "{{ item.key }}"
     type: "{{ item.type }}"
     value: "{{ item.value | default() }}"
-  register: defaults_out
   with_items:
     - "{{ macos_apple_defaults }}"
   tags:
@@ -33,7 +32,6 @@
     key: "{{ item.key }}"
     type: "{{ item.type }}"
     value: "{{ item.value | default() }}"
-  register: defaults_out
   with_items:
     - "{{ macos_microsoft_defaults }}"
   tags:
