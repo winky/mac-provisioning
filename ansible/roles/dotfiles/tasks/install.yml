@@ -25,3 +25,39 @@
       register: dotfiles_install
       # Only runs when the dotfiles are absent, so running it always means a change.
       changed_when: true
+      # The clone above is only simulated in check mode, so there is no directory to
+      # run make in.
+      when: not ansible_check_mode
+
+# `make install` covers the dotfiles in the home directory but not the XDG configs,
+# which `make homeConfig` places -- among them ~/.config/git, where ghq.root and the
+# gh credential helper are defined. Kept outside the block above so a machine that
+# already has the dotfiles gets them too.
+- name: Check whether the dotfiles are available
+  ansible.builtin.stat:
+    path: "{{ dotfiles_path }}"
+  register: dotfiles_dir_current
+  tags: [skip_test]
+
+- name: Check where the XDG config links point
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.config/{{ item }}"
+  register: dotfiles_xdg_links
+  loop: "{{ dotfiles_xdg_configs }}"
+  when: dotfiles_dir_current.stat.exists
+  tags: [skip_test]
+
+# make homeConfig only uses `ln -sfnv`, so running it again is harmless; guard on the
+# links so that a run which changes nothing is reported as such.
+- name: Link the XDG configs
+  ansible.builtin.command:
+    cmd: make homeConfig
+    chdir: "{{ dotfiles_path }}"
+  changed_when: true
+  when:
+    - dotfiles_dir_current.stat.exists
+    - dotfiles_xdg_links.results
+      | map(attribute='stat.lnk_source', default='')
+      | reject('match', dotfiles_path ~ '/')
+      | list | length > 0
+  tags: [skip_test]

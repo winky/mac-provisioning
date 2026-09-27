@@ -1,7 +1,8 @@
 ---
 # Resolved the same way scripts/install.sh resolves it, so both agree on a machine
-# where ~/.config/git (and with it ghq.root) has not been linked yet.
-claude_config_ghq_root: "{{ ansible_facts.env.HOME }}/src"
+# where ~/.config/git (and with it ghq.root) has not been linked yet. A play-level
+# `ghq_root` overrides it (Phase 2 sets one per host).
+claude_config_ghq_root: "{{ ghq_root | default(ansible_facts.env.HOME ~ '/src') }}"
 
 # SSH rather than HTTPS: `gh auth login --git-protocol ssh` registers a key as part of
 # the one interactive step this repository already needs, so it does not depend on the

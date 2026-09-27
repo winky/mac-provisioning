@@ -96,6 +96,31 @@ ansible-core のバージョンは実行側と lint 側で一致しない（別 
 ため無人では呼べない。プロビジョニング時（人が居る）に 1Password から取り出して Keychain に入れ、
 無人実行時は Keychain から読む分担を想定している。
 
+## dotfiles は ghq 配下に置く
+
+`dotfiles_path` は ghq のルート配下（既定 `~/src/github.com/winky/dotfiles`）を指す。以前は
+`~/.dotfiles` だったが、実際の運用は ghq 管理下であり、そのままでは新しい Mac に**2つ目の
+clone が作られる**。
+
+`~/.dotfiles` を前提にしていた影響は目に見えにくかった。`~/.dotfiles` が（中身が不完全でも）
+存在すると `Install dotfiles` ブロックは「導入済み」と判断してスキップするため、何も起きない
+ように見える。
+
+ghq ルートは `dotfiles_ghq_root` / `claude_config_ghq_root` がそれぞれ持ち、play レベルの
+`ghq_root` があればそちらを使う。Phase 2 でホストごとに `ghq_root` を設定する。
+
+## `make check` では捕まらないものがある
+
+check モードは `command` / `shell` タスクを実行しない。したがって「コマンドの実行自体が失敗する」
+種類の問題は dry-run では現れず、実際に適用するまで分からない。`make homeConfig` を呼ぶタスクを
+足したときに、存在しないディレクトリで make を実行しようとする不具合が `make check` を通過した。
+
+CI も同じ穴を持つ。`skip_test` タグを付けたタスク（dotfiles の clone、DNS 設定、`claude_config`
+の全タスク）は CI で実行されないため、そちらでも検出されない。
+
+外部コマンドを呼ぶタスクを追加するときは、dry-run と CI の両方が対象外である前提で、前提条件
+（対象ディレクトリの存在、認証状態）を明示的に確認するタスクを添える。
+
 ## セットアップの順序と認証の境界
 
 対象リポジトリの公開状態はこうなっている。
