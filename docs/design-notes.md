@@ -124,6 +124,49 @@ gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)" --type signing
 dotfiles が `user.signingkey = ~/.ssh/id_ed25519.pub` を指定しており、`commit.gpgsign` は無条件なので、
 **この登録を飛ばすと署名は付くが Verified にならず、鍵自体が無いマシンでは一切コミットできない。**
 
+## macOS は Homebrew、Linux は dotfiles
+
+パッケージの入手元は次の方針で分ける。
+
+- **macOS** — Homebrew で入るものは `Brewfile` から入れる。dotfiles にはそれ以外（シェルプラグインなど）だけを持たせる
+- **Linux** — dotfiles が全てを入れる
+
+後者が理由である。Linux でも同じ環境を作れるようにするには、dotfiles 単体で完結している必要がある。
+そのため dotfiles 側のリリースバイナリ取得は **OS ではなくコマンドの有無で判定する**。macOS では
+Homebrew が先に PATH に乗るのでスキップされ、dotfiles だけを持つマシン（Linux、または
+mac-provisioning を通していない Mac）では dotfiles が入れる。
+
+### ghq は Homebrew から入れる
+
+zinit が配置する `ghq` のパスは **ghq ルートの内側**にある。
+
+```
+PATH ⊃ <ghq root>/github.com/winky/dotfiles/.zinit/plugins/x-motemen---ghq
+```
+
+ghq ルートを移動すると ghq 自身のパスが壊れる。`~/development` を `~/src` へ移したときに実際に
+起き、`~/.zinit` のリンクを張り直すまで `ghq` が使えなかった。`/opt/homebrew/bin` は ghq の管理範囲
+の外にある固定パスなので、この循環がない。
+
+launchd のジョブから使う場合も効く。launchd はシェルの初期化ファイルを読まないため、どちらの場合も
+plist で PATH を指定するか絶対パスで呼ぶ必要があるが、その絶対パスがリポジトリの位置に依存しなくなる。
+
+### fzf と asdf は dotfiles のままにしてある
+
+この2つの zinit 宣言は**シェル統合まで行っている**。
+
+```zsh
+# fzf: install スクリプトが補完とキーバインドを設定する
+atclone'./install --xdg --no-update-rc --completion --key-bindings'
+multisrc'shell/{key-bindings,completion}.zsh'
+
+# asdf: shims を PATH に前置する
+atload'PATH=$HOME/.asdf/shims:$PATH;'
+```
+
+Homebrew に移すとシェルの起動経路が変わる。方針としては移す対象だが、他の変更と混ぜずに単独で
+扱うべきものとして残している。
+
 ## dotfiles は ghq 配下に置く
 
 `dotfiles_path` は ghq のルート配下（既定 `~/src/github.com/winky/dotfiles`）を指す。以前は
