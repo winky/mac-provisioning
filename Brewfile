@@ -1,8 +1,10 @@
 cask_args appdir: "/Applications"
 
+brew "asdf"
 brew "awscli"
 brew "coreutils"
 brew "ffmpeg"
+brew "fzf"
 brew "gh"
 brew "ghq"
 brew "graphviz"
