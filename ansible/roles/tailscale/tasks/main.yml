@@ -1,0 +1,14 @@
+---
+#
+# tailscale/tasks/main.yml
+# main task for tailscale
+#
+# The role has no defaults/main.yml on purpose. tailscale_bin, tailscale_package and
+# tailscale_start_hint differ per machine and a wrong default would be worse than a
+# missing one: probing /opt/homebrew/bin/tailscale on the laptop would report "not
+# installed" for a machine that has the app. They are defined in ansible/vars/<profile>.yml
+# so that leaving one out is an undefined-variable error, the same rule the enable_*
+# switches follow.
+#
+- name: Tailscale Verify
+  ansible.builtin.import_tasks: verify.yml

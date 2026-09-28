@@ -23,18 +23,30 @@ jobs:
   test:
     runs-on: macos-26
 
+    # Both profiles, because a role gated by an enable_* switch never runs under the
+    # laptop profile -- the Mac mini would otherwise be the first machine ever to execute
+    # the unattended, agent-user and ollama roles. A runner is disposable, so pmset and
+    # dscl changes cost nothing there. This replaces the macOS VM verification that was
+    # dropped from Phase 1.5.
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [laptop, mac-mini]
+
     steps:
       - uses: actions/checkout@v5
       - name: Install ansible
         run: brew install ansible
-      # host_profile is passed explicitly: the runner is neither a MacBook nor a Mac mini,
-      # so scripts/host-profile.sh would (correctly) refuse to guess. laptop is the profile
-      # whose switches are all off, which is what a runner should exercise.
+      # The profile is passed explicitly: the runner is neither a MacBook nor a Mac mini,
+      # so scripts/host-profile.sh would (correctly) refuse to guess.
       - name: Run ansible-playbook
-        run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test -e host_profile=laptop
+        run: |
+          ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml \
+            --skip-tags skip_test -e host_profile=${{ matrix.profile }}
       - name: Run ansible-playbook again and assert idempotence
         run: |
-          ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test -e host_profile=laptop \
+          ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml \
+            --skip-tags skip_test -e host_profile=${{ matrix.profile }} \
             | tee /tmp/idempotence.log
           grep -q 'changed=0.*failed=0' /tmp/idempotence.log \
             || { echo "playbook is not idempotent"; exit 1; }

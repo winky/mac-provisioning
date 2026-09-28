@@ -325,16 +325,65 @@ undefined variable で落ちる。
 Mac mini は常時稼働・無人復帰させるが SSH 専用ではなく、ディスプレイと入力機器を付けて対話利用も
 する。GUI アプリは両方に必要である。
 
-現時点で機種固有なのは `ollama` だけ。
-
 | | 入るもの | 理由 |
 |---|---|---|
-| `Brewfile.laptop` | なし | 下記のとおり空で置く |
+| `Brewfile.laptop` | `tailscale-app` | GUI アプリ版の Tailscale。下記 |
 | `Brewfile.mac-mini` | `ollama` | ローカル LLM。アプリではなく formula を使い、常駐させる |
+| | `tailscale` | formula 版。下記 |
 
-`Brewfile.laptop` を空のまま残すのは、両プロファイルが実ファイルに解決されるようにするためである。
-`init.sh` がファイルの不在を許容すると、プロファイル名を間違えたときに黙ってスキップされる。
-`brew bundle` はコメントだけのファイルで exit 0 になるので、空ファイルは no-op として安全に扱える。
+片方が空になる時期もある。その場合も**ファイルは消さずコメントだけ残す**。`init.sh` がファイルの
+不在を許容すると、プロファイル名を間違えたときに黙ってスキップされる。`brew bundle` はコメント
+だけのファイルで exit 0 になるので、空ファイルは no-op として安全に扱える。
+
+### Tailscale は機体で入れ方を変える
+
+同じ 1.102.4 が formula と cask の両方にある。要件が違うので機体ごとに選ぶ。
+
+| | 入れ方 | 常駐の形 |
+|---|---|---|
+| Mac mini | `brew "tailscale"` | service 定義が `require_root: true` なので **root の LaunchDaemon**。ログイン前から上がる |
+| ノート | `cask "tailscale-app"` | GUI アプリ。ユーザーセッションの Network Extension |
+
+Mac mini が formula なのは**無人復帰のため**である。電源復帰やリブートの後、誰もログインしていない
+状態で tailnet に戻っていなければ遠隔操作できない。GUI アプリはユーザーセッションに紐づくので、この
+要件を満たせない。
+
+tailscaled の状態は `/var/lib/tailscale` にあり login keychain を触らないので、「LaunchDaemon は
+秘密情報を持たないものに限る」という決定の範囲内に収まる。
+
+ノートが GUI アプリなのは、手で操作する機体でメニューバーから接続状態が見える利点を取ったから。
+無人復帰の要件が無い機体に root デーモンを常駐させる理由がない。
+
+バイナリの位置が機体で変わるため `tailscale_bin` は `vars/<profile>.yml` に置く。ロールに
+`defaults/main.yml` を置かないのは `enable_*` と同じ理由で、既定値があると**ノートで formula の
+パスを見て「未インストール」と誤報する**。
+
+### Tailscale は両端が tailnet に居ないと通らない
+
+ピアツーピアのメッシュなので、Mac mini だけ参加させても tailnet 外のノートからは到達できない。
+Funnel は HTTPS の公開用で SSH の経路にはならず、subnet router は「tailnet 上の端末から LAN へ」の
+逆向きである。
+
+そのためノートにも、iPad から繋ぐなら iPad にも Tailscale が必要になる。iPad は App Store の公式
+アプリで参加させる（Homebrew の管理外）。
+
+### tailscale ロールは状態を報告して失敗させない
+
+デーモンの起動（formula は root が必要）と `tailscale up`（ブラウザでの承認）はどちらも一度きりの
+対話操作なので自動化しない。`claude_config` と同じ形で、状態を読んで**次に打つコマンドを出す**。
+play を失敗させないので、次の `make deploy` がその先の状態を報告する。
+
+状態は4つに分かれる。
+
+| 状態 | 出すもの |
+|---|---|
+| バイナリが無い | `make init`（プロファイルごとの Brewfile 記述を添えて） |
+| `status --json` が非ゼロ | デーモンの起動コマンド（`sudo brew services start tailscale` / `open -a Tailscale`） |
+| `BackendState != Running` | `tailscale up` |
+| `Running` | 状態確認のコマンドのみ |
+
+`status --json` の rc を `failed_when: false` で保持しているのは、**デーモンに繋がらないことと
+ログインしていないことが別の状態**であり、同じ案内を出すと手戻りになるためである。
 
 ## dotfiles は ghq 配下に置く
 
@@ -417,7 +466,7 @@ private なのは `claude-config` だけなので、**認証が必要になる�
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / macos / claude_config
+4. `make deploy` — dotfiles / tailscale / macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -477,3 +526,19 @@ CI が落ちたときに自分の変更が原因なのかイメージが変わ�
 
 lint ジョブは `make lint` を実行する。ローカルと同じコマンドを通すためで、コレクションの
 参照解決もローカルと同じ経路になる。
+
+### test ジョブは両プロファイルを回す
+
+`enable_*` で gate されたロールは laptop プロファイルでは1本も走らない。CI も laptop だけだと、
+**Mac mini が `unattended` / `agent-user` / `ollama` を実行する最初の機体になる**。見送った
+Phase 1.5（macOS VM での検証）が埋めようとしていた穴がそのまま残る。
+
+ランナーは使い捨てなので、そこでなら `pmset` や `dscl` の変更が残らない。VM を立てるより安く、
+本番に近い。matrix で `laptop` と `mac-mini` を回す（GitHub Actions は YAML アンカーを使えないので、
+ジョブを複製するのではなく matrix にしている）。
+
+`fail-fast: false` を付けているのは、片方のプロファイルの失敗でもう片方が打ち切られると
+どちらが壊れたのか分からなくなるためである。
+
+プロファイルは `-e host_profile=` で明示する。ランナーの機種はどちらにも一致しないので、
+`scripts/host-profile.sh` は正しく判定を拒否する。

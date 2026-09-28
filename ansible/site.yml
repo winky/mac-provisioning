@@ -38,6 +38,9 @@
     - role: dotfiles
       tags:
         - dotfiles
+    - role: tailscale
+      tags:
+        - tailscale
     - role: macos
       tags:
         - macos

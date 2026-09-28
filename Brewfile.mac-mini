@@ -8,3 +8,10 @@
 # a launchd job on a headless machine. The model directory moves with OLLAMA_MODELS once
 # the external NVMe arrives, which is why nothing here hardcodes a path.
 brew "ollama"
+
+# Tailscale, as the formula rather than the GUI app the laptop gets. Its service stanza is
+# require_root, so tailscaled runs as a root LaunchDaemon and is up before anyone logs in
+# -- which is what recovering unattended after a power cut needs. Its state lives in
+# /var/lib/tailscale and never touches the login keychain, so it stays inside the rule that
+# LaunchDaemons hold no secrets.
+brew "tailscale"

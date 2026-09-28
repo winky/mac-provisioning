@@ -1,0 +1,71 @@
+---
+#
+# tailscale/tasks/verify.yml
+# Report what is still left to do by hand for Tailscale
+#
+# The package itself comes from the Brewfile: the formula on the Mac mini, whose service
+# stanza is require_root, so tailscaled runs as a root LaunchDaemon and is up before anyone
+# logs in -- what recovering unattended needs. The laptop gets the GUI app for its menu bar.
+#
+# Neither starting the daemon nor logging in is automated. The formula's service needs root,
+# and the login is a browser round trip; both are one-off and interactive. So this role has
+# the same shape as claude_config: probe the state and print the exact command rather than
+# failing the play, and the next `make deploy` reports the next step.
+- name: Check whether the Tailscale binary is in place
+  ansible.builtin.stat:
+    path: "{{ tailscale_bin }}"
+  register: tailscale_binary
+
+- name: Notify that Tailscale is not installed
+  ansible.builtin.debug:
+    msg: >-
+      {{ tailscale_bin }} is missing. Run `make init` to apply the Brewfile, which has
+      {{ tailscale_package }} for this profile.
+  when: not tailscale_binary.stat.exists
+
+# Read-only, and wanted in check mode too. A non-zero exit means tailscaled could not be
+# reached at all, which is a different state from being logged out, so the rc is kept
+# rather than failed on.
+- name: Read the Tailscale backend state
+  ansible.builtin.command:
+    cmd: "{{ tailscale_bin }} status --json"
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: tailscale_binary.stat.exists
+
+- name: Note the Tailscale backend state
+  ansible.builtin.set_fact:
+    tailscale_backend_state: >-
+      {{ (tailscale_status.stdout | from_json).BackendState | default('unknown') }}
+  when:
+    - tailscale_binary.stat.exists
+    - tailscale_status.rc | default(1) == 0
+
+- name: Notify that tailscaled is not running
+  ansible.builtin.debug:
+    msg: >-
+      tailscaled could not be reached. Start it with: {{ tailscale_start_hint }}
+  when:
+    - tailscale_binary.stat.exists
+    - tailscale_status.rc | default(1) != 0
+
+# Both ends have to join the tailnet -- it is a peer-to-peer mesh, so a machine that is
+# not on it cannot reach one that is, however the far end is configured.
+- name: Notify that Tailscale is not logged in
+  ansible.builtin.debug:
+    msg: >-
+      Tailscale is running but not logged in (BackendState: {{ tailscale_backend_state }}).
+      Run `{{ tailscale_bin }} up` and approve the URL it prints. Every machine that has to
+      reach this one needs to join the same tailnet.
+  when:
+    - tailscale_backend_state is defined
+    - tailscale_backend_state != 'Running'
+
+- name: Report that Tailscale is up
+  ansible.builtin.debug:
+    msg: Tailscale is up. `{{ tailscale_bin }} status` shows the tailnet.
+  when:
+    - tailscale_backend_state is defined
+    - tailscale_backend_state == 'Running'
