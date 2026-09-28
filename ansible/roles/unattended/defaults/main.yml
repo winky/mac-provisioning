@@ -1,0 +1,22 @@
+---
+#
+# unattended/defaults/main.yml
+#
+# These are the role's own definition of "unattended", not a per-machine difference, so
+# they belong here rather than in ansible/vars/<profile>.yml. The profile decides whether
+# the role runs at all (enable_unattended); it does not decide what the settings are.
+#
+# displaysleep and the screen saver are deliberately absent. Nothing about recovering
+# unattended needs the display awake, and the Mac mini has a monitor attached that is used
+# by hand -- keeping it lit costs the panel and saves nothing.
+#
+# autorestart is the "start up again after a power failure" setting. It does not appear in
+# pmset output on a laptop, so it is always reported as needing a change there; that is
+# harmless because the role only runs under the mac-mini profile. Whether an Apple Silicon
+# Mac mini exposes it at all is unverified -- it is an Intel-era SMC setting.
+unattended_pmset_settings:
+  sleep: 0
+  disksleep: 0
+  powernap: 0
+  womp: 1
+  autorestart: 1

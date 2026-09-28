@@ -508,7 +508,7 @@ private なのは `claude-config` だけなので、**認証が必要になる�
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / tailscale / macos / claude_config
+4. `make deploy` — dotfiles / tailscale / unattended / macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -524,6 +524,111 @@ ghq ルートは各ロールが自前の変数（既定 `~/src`、`install.sh` �
 `~/.config/git` を配置するのは同じ play の中なので、`claude_config` ロールが `git config --get ghq.root`
 を読む形にはできるが、その値はチルダが展開されないまま返るため（後述の「ghq ルートの解決」を参照）
 変数で持つ方が単純である。
+
+## 無人稼働の設定は適用せず報告する
+
+`unattended` ロールは `pmset` を書き換えない。状態を読んで、打つべき `sudo pmset -a ...` を出すだけ
+である。
+
+理由は `make deploy` を**パスワード無しで実行できる状態に保つこと**にある。このロールが対象にする
+のは launchd のジョブを走らせる機体で、deploy が sudo プロンプトで止まるならジョブから呼べない。
+
+代償が小さいのは、ここで見る設定が**ドリフトしない**ためである。`pmset` の値も FileVault も、機体
+ごとに一度決めれば再起動をまたいで保たれる。手で一度打つコストは1コマンドだが、自動化すると以降
+すべての deploy にパスワードが付く。
+
+## FileVault は有効にする
+
+当初は「FileVault 無効 ＋ 自動ログイン有効」で無人復帰を取る方針だった。**反転させた。** Mac mini は
+無人稼働だけでなく手でも使うため、盗難時に電源を入れるだけで中身が読める状態は釣り合わない。
+
+### 自動ログインが不要になる
+
+Apple Silicon では **FileVault の事前起動認証がそのままログインになる**（パスワードを2回打たないのは
+このため）。したがって FileVault を有効にすると:
+
+- **自動ログインの設定自体が要らない。** `/etc/kcpassword` に可逆な形でパスワードを書く処理が
+  設計から消える
+- **login keychain は人が解錠するまで開かない。** 「自動ログインで解錠されるので Keychain に
+  閉じ込めても安全ではない」という前提が覆り、Keychain が本来の意味で機能する
+
+この2点目により、「この機体に置く認証情報は最小権限・短命に絞る」という制約の根拠が弱まる。制約
+自体は残してよいが、それだけが防御線ではなくなる。
+
+### 代わりに失うもの
+
+**予期しない電源断からの無人復帰。** macOS に FileVault の自動解錠・遠隔解錠は存在しない。
+
+- `fdesetup authrestart` は**自分で発行する再起動1回分**の解錠を預ける。停電やカーネルパニックには
+  効かない
+- MDM の認証付き再起動は動いている OS から発行するもので、解錠画面で止まった機体には届かない
+- `pmset repeat poweron` で電源は入るが、解錠画面で止まる
+- Linux の dropbear-initramfs 相当のものは macOS に無い
+
+### UPS が設計の一部になる
+
+穴の埋め方として **UPS を前提に置く**。短時間の停電では再起動そのものを起こさせず、電池が尽きる
+前に macOS に正常シャットダウンさせる。これで残るのは「外出中の長時間停電・パニック」だけになる。
+
+ロールは `system_profiler SPPowerDataType` の `UPS Installed` を見て、無ければ指摘する。**あった方が
+良い装備ではなく、FileVault を有効にしたことで生まれた穴に対する選択済みの答え**なので、未達の前提
+として扱う。
+
+`pmset -g ups` は何も出さず、`pmset -g ps` は「今どこから給電されているか」しか答えない。
+`system_profiler` はその有無を直接述べる。
+
+死活監視（tailnet から落ちたら通知）も併せて必要だが、こちらはノート側から動かすのが素直なので
+このリポジトリの外側に置く。
+
+ロールは `fdesetup supportsauthrestart` も確認する。これが false だと OS アップデートの再起動まで
+物理操作が必要になり、遠隔での維持が現実的でなくなるため。
+
+完了メッセージが「無人稼働できる」と言わずに**UPS を超える停電では止まることを明記している**のは、
+このトレードオフを報告が隠してはいけないからである。
+
+### 採らなかった構成
+
+**FileVault 無効 ＋ 自動ログイン無効**も検討した。sshd と tailscaled はユーザーセッションに依存しない
+LaunchDaemon なので、ログイン画面で待っている機体にも**SSH で到達できる**。当初案（FileVault 無効 ＋
+自動ログイン有効）より明確に良く、`kcpassword` も書かずに済む。
+
+採らなかったのは、盗難時にディスクが読めてしまうこと。手でも使う機体で、電源を入れるだけで中身が
+読める状態は釣り合わない。
+
+この構成を採る場合、ジョブの設計も変わる。ログインしないと login keychain が開かないので、
+「秘密情報を使うジョブは LaunchAgent」という決定を捨て、System keychain（`/Library/Keychains/System.keychain`）
+＋ LaunchDaemon に寄せることになる。**FileVault を有効にした結果、その付け替えは不要になった** —
+解錠がログインを兼ねるので、解錠後は login keychain も LaunchAgent も期待どおり動く。
+
+### 管理しないもの
+
+`displaysleep` とスクリーンセーバは**意図的に対象外**にしている。無人で復帰することとディスプレイが
+点いていることは無関係で、Mac mini には手で使うモニタが繋がる。点けたままにしてもパネルを消耗する
+だけである。
+
+### autorestart は実機でしか確かめられない
+
+電源復旧後に自動起動する設定だが、**ノートの `pmset` 出力には現れない**。Intel 時代の SMC 設定で、
+Apple Silicon の Mac mini が公開しているかどうかは未検証である。
+
+ロールは「pmset が報告しない設定は未設定として扱う」ので、出力に無い環境では常に drift として
+報告される。`enable_unattended` が付く機体でしか走らないため実害はない。
+
+### 条件式に正規表現を置かない
+
+各設定を `when` の中で正規表現に照合する形を最初に書き、**動かなかった**。
+
+```yaml
+# 一致する行があっても False になる
+when: not unattended_pmset.stdout is search('(?m)^\s*' ~ item.key ~ '\s+' ~ item.value ~ '\b')
+```
+
+同じ式を `{{ }}` で囲むと正しく True を返す。`search('womp')` や `search('womp\s+1')` は素の `when`
+でも通るのに、`(?m)^` を含めた時点で通らなくなる。**バックスラッシュを含む条件式は `{{ }}` の中と
+評価経路が違う。**
+
+`pmset -g` を一度 dict に起こして**値として比較する**形に変えた。条件式から正規表現を外せば、この
+問題自体が起きない。
 
 ## 冪等性
 
