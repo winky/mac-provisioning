@@ -106,16 +106,42 @@
       otherwise go through `sudo fdesetup authrestart`.
   when: not unattended_authrestart.stdout is search('true')
 
-# Deliberately worded as what it is. With FileVault on, an unexpected power cut still stops
-# at the unlock screen; no amount of pmset changes that, and claiming otherwise would be the
-# one thing this report must not do.
+# A UPS is not a nice-to-have here. Keeping FileVault on means an unexpected power cut needs
+# someone to walk over and unlock, and a UPS is what keeps a brief outage from becoming a
+# reboot at all. It is the chosen answer to the one gap FileVault leaves, so its absence is
+# an unmet prerequisite rather than a suggestion.
+#
+# `pmset -g ups` prints nothing useful and `pmset -g ps` only names whatever is supplying
+# power right now, so neither answers "is a UPS attached". system_profiler states it outright.
+- name: Read the power hardware
+  ansible.builtin.command:
+    cmd: system_profiler SPPowerDataType
+  register: unattended_power_hardware
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Notify that no UPS is attached
+  ansible.builtin.debug:
+    msg: >-
+      No UPS is attached. With FileVault on, a power cut leaves this machine at the unlock
+      screen until someone is in front of it, and a UPS is what stops a short outage from
+      getting that far. Attach one over USB; macOS picks it up natively and can be told to
+      shut down cleanly once the outage outlasts the battery.
+  when: "not unattended_power_hardware.stdout is search('UPS Installed: Yes')"
+
+# Deliberately worded as what it is. With FileVault on, an unexpected power cut that outlasts
+# the UPS still stops at the unlock screen; no amount of pmset changes that, and claiming
+# otherwise would be the one thing this report must not do.
 - name: Report what the machine can and cannot do on its own
   ansible.builtin.debug:
     msg: >-
-      Power settings are right, the disk is encrypted, and planned restarts can be driven
-      remotely with `sudo fdesetup authrestart`. An unexpected power cut still stops at the
-      FileVault unlock screen and needs a person: that is the trade FileVault makes here.
+      Power settings are right, the disk is encrypted, a UPS is attached, and planned restarts
+      can be driven remotely with `sudo fdesetup authrestart`. An outage that outlasts the UPS
+      still stops at the FileVault unlock screen and needs a person: that is the trade
+      FileVault makes here.
   when:
     - unattended_pmset_drift | default([]) | length == 0
     - unattended_filevault.stdout is search('FileVault is On')
     - unattended_authrestart.stdout is search('true')
+    - "unattended_power_hardware.stdout is search('UPS Installed: Yes')"
