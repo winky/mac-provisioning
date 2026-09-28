@@ -1,0 +1,65 @@
+---
+#
+# scheduled_jobs/tasks/install.yml
+# Put winky/scheduled-jobs in place and let it install its own LaunchAgents
+#
+# This playbook used to build the plists itself, in a launchd role that took a list of job
+# definitions. That contradicted the rule the rest of these roles follow -- call the target
+# repository's make target, so the definitions live in one place and adding one does not mean
+# editing the playbook -- and it meant this repository owned the schedule of jobs it knew
+# nothing else about. The jobs repository installs itself now, like dotfiles and
+# claude-config do.
+#
+# What is left here is the only part that is genuinely this machine's business: whether it
+# runs the jobs at all. That is the enable_scheduled_jobs switch the role is gated on.
+#
+# scheduled-jobs is private, so this cannot work until `gh auth login --git-protocol ssh` has
+# registered a key. Probe first and report what to run rather than failing the play, the same
+# as claude_config: the next `make deploy` finishes the job.
+- name: Check whether the scheduled-jobs repository is reachable # noqa: command-instead-of-module
+  ansible.builtin.command:
+    cmd: git ls-remote --exit-code {{ scheduled_jobs_repo }} HEAD
+  register: scheduled_jobs_remote
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags: [skip_test]
+
+- name: Place the scheduled jobs
+  when: scheduled_jobs_remote.rc | default(1) == 0
+  tags: [skip_test]
+  block:
+    - name: Get scheduled-jobs
+      ansible.builtin.git:
+        repo: "{{ scheduled_jobs_repo }}"
+        version: HEAD # noqa: latest
+        dest: "{{ scheduled_jobs_path }}"
+        update: false
+
+    # `make -C` is enough: that Makefile resolves its own directory from MAKEFILE_LIST, so
+    # unlike claude-config it does not need the caller to chdir.
+    #
+    # The target is idempotent and says so -- it prints "placed <label>" only when it actually
+    # wrote a plist -- so its own output decides whether this counts as a change. Working it
+    # out here would mean reimplementing the comparison the target already does, which is the
+    # duplication this split removed.
+    - name: Install the LaunchAgents
+      ansible.builtin.command:
+        cmd: make -C {{ scheduled_jobs_path }} install
+      register: scheduled_jobs_install
+      changed_when: "'placed' in scheduled_jobs_install.stdout"
+
+    # Skipped in check mode along with the command above, rather than reporting an empty list.
+    - name: Report what is scheduled
+      ansible.builtin.debug:
+        msg: "{{ scheduled_jobs_install.stdout_lines }}"
+      when: scheduled_jobs_install.stdout_lines | default([]) | length > 0
+
+- name: Notify that scheduled-jobs could not be reached
+  ansible.builtin.debug:
+    msg: >-
+      {{ scheduled_jobs_repo }} is private and could not be reached.
+      Run `gh auth login --git-protocol ssh` to register an SSH key,
+      then re-run `make deploy`.
+  when: scheduled_jobs_remote.rc | default(1) != 0
+  tags: [skip_test]

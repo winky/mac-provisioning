@@ -65,7 +65,8 @@ Brewfile.mac-mini        Mac mini 固有
 scripts/install.sh       新しい Mac で最初に実行する
 scripts/init.sh          Homebrew と Brewfile
 scripts/host-profile.sh  機種から laptop / mac-mini を判定する
-ansible/site.yml         dotfiles / tailscale / unattended / ollama / launchd / macos / claude_config の7ロール
+ansible/site.yml         7ロール（dotfiles / tailscale / unattended / ollama /
+                         scheduled_jobs / macos / claude_config）
 ansible/group_vars/      両プロファイル共通の変数
 ansible/vars/            プロファイルごとの変数
 ```
@@ -75,6 +76,17 @@ ansible/vars/            プロファイルごとの変数
 ```sh
 cd ansible && ansible-playbook site.yml --tags macos
 ```
+
+## 関連リポジトリ
+
+| リポジトリ | 持っているもの |
+|---|---|
+| [winky/dotfiles](https://github.com/winky/dotfiles) | シェル・エディタ等の設定。`make deploy` / `make homeConfig` を呼ぶ |
+| `winky/claude-config` | グローバルな Claude Code 設定（private）。`make install` を呼ぶ |
+| `winky/scheduled-jobs` | **スケジュール実行するジョブとその時刻**（private）。`make install` を呼ぶ |
+
+いずれも**リンクや plist の定義は相手側が持ち**、この playbook は ghq 配下に置いて make ターゲットを
+呼ぶだけ。ジョブを増やすときにこのリポジトリを触る必要はない。
 
 ## 自動化していないこと
 

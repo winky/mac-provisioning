@@ -1,0 +1,16 @@
+---
+#
+# scheduled_jobs/defaults/main.yml
+#
+# winky/scheduled-jobs owns the jobs, their schedules and the LaunchAgents. This role only
+# puts the repository in place and calls its make target, the same shape as dotfiles and
+# claude_config. Adding a job means editing that repository, not this playbook.
+#
+# Resolved the same way the other repository roles resolve it, so they agree on one root.
+scheduled_jobs_ghq_root: "{{ ghq_root | default(ansible_facts.env.HOME ~ '/src') }}"
+
+# SSH rather than HTTPS, and private like claude-config: the jobs carry Backlog project keys
+# and Slack channels. That means this role, like claude_config, cannot do its work until
+# `gh auth login --git-protocol ssh` has registered a key.
+scheduled_jobs_repo: git@github.com:winky/scheduled-jobs.git
+scheduled_jobs_path: "{{ scheduled_jobs_ghq_root }}/github.com/winky/scheduled-jobs"

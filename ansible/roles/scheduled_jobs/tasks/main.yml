@@ -1,0 +1,7 @@
+---
+#
+# scheduled_jobs/tasks/main.yml
+# main task for scheduled_jobs
+#
+- name: Scheduled Jobs Install
+  ansible.builtin.import_tasks: install.yml
