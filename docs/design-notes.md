@@ -282,8 +282,23 @@ ansible としては素直だが、**両ホストが `ansible_connection: local`
 を付ける。
 
 `include_vars` は存在しないファイルで失敗する。これが `host_profile` のタイポを silent fallback
-ではなくエラーにしている。`vars/laptop.yml` が `group_vars/all.yml` の既定値をそのまま書き直して
-いるのは、両プロファイルが実ファイルに解決されるようにするためである。
+ではなくエラーにしている。`vars/laptop.yml` が全スイッチを `false` で明示しているのも同じ理由で、
+両プロファイルが実ファイルに解決されることを保証している。
+
+### enable_* を group_vars で既定値にしない
+
+`enable_headless` などのロールスイッチは `group_vars/all.yml` に**置かない**。
+
+ansible の precedence では `include_vars`（#18）が playbook の `group_vars/all`（#5）を上回る。
+両プロファイルが全スイッチを定義している限り group_vars 側の値は**一度も読まれない**。
+
+問題は冗長さではなく、スイッチを1つ書き忘れたときの挙動である。group_vars に既定値があると、
+`vars/mac-mini.yml` への追記を忘れた時点で `false` が黙って効き、**必要な機体でロールが
+スキップされる**。エラーは出ない。既定値を置かなければ `when: enable_headless` が
+undefined variable で落ちる。
+
+`include_vars` を存在しないファイルで失敗させてタイポを検出しているのと同じ判断である。
+代償として、スイッチを追加するときは両プロファイルに書く必要がある。
 
 ### Brewfile は機種固有のものだけ分ける
 

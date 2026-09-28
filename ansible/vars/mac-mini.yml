@@ -3,6 +3,9 @@
 # vars/mac-mini.yml
 # Headless, always on, hosts the agents.
 #
+# Every switch is listed, including any that end up false: see vars/laptop.yml for why
+# they are not defaulted in group_vars/all.yml.
+#
 enable_headless: true
 enable_agent_user: true
 enable_ollama: true

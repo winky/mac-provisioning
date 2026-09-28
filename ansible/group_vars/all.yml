@@ -12,10 +12,9 @@ ghq_root: "{{ ansible_facts.env.HOME }}/src"
 # Where this repository is checked out. Used to reach scripts/ from the playbook.
 provision_root: "{{ playbook_dir }}/.."
 
-# Role switches, set per profile in vars/<profile>.yml. No role reads them yet -- the
-# roles they gate (headless, agent-user, ollama, launchd) arrive in Phase 3 -- but the
-# defaults live here so that adding a role means adding one entry, not restructuring.
-enable_headless: false
-enable_agent_user: false
-enable_ollama: false
-enable_launchd_jobs: false
+# The enable_* role switches are deliberately NOT defaulted here. include_vars outranks
+# group_vars, so a default would never be read while both profile files define every
+# switch -- and on the day one of them omits a switch, the default would quietly turn the
+# role off on that machine instead of failing. Defining them only in vars/<profile>.yml
+# turns an omission into an undefined-variable error, the same way include_vars failing on
+# a missing file turns a bad host_profile into an error.

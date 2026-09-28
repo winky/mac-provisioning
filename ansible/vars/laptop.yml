@@ -3,12 +3,12 @@
 # vars/laptop.yml
 # The development and verification machine.
 #
-# Every switch stays at the group_vars default: the headless and agent-hosting roles are
-# for the Mac mini. The laptop's only machine-specific packages live in Brewfile.laptop.
+# Every switch is off: the headless and agent-hosting roles belong to the Mac mini. The
+# laptop's only machine-specific packages live in Brewfile.laptop.
 #
-# The values are restated rather than left to the defaults so that both profiles resolve
-# to a real file. include_vars fails on a missing file, which is what turns a typo in
-# host_profile into an error instead of a silent fallback.
+# The switches are defined here rather than defaulted in group_vars/all.yml so that
+# leaving one out is an undefined-variable error rather than a silently disabled role.
+# Both profile files therefore have to list every switch.
 #
 enable_headless: false
 enable_agent_user: false
