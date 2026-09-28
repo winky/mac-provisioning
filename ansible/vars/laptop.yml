@@ -14,3 +14,12 @@ enable_unattended: false
 enable_agent_user: false
 enable_ollama: false
 enable_launchd_jobs: false
+
+# Tailscale comes from the GUI app here (cask "tailscale-app"). The app build ships its
+# CLI inside the bundle; there is no /opt/homebrew/bin/tailscale on this profile.
+tailscale_bin: /Applications/Tailscale.app/Contents/MacOS/Tailscale
+tailscale_package: cask "tailscale-app"
+tailscale_start_hint: open -a Tailscale (the first launch asks to allow its network extension)
+# The app build logs in from its menu bar item; the bundled CLI also works. The cask
+# installs the standalone (macsys) build, whose CLI is not restricted like the App Store one.
+tailscale_login_hint: "Log in from the Tailscale menu bar item, or run `{{ tailscale_bin }} up`."

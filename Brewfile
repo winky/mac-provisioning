@@ -1,5 +1,3 @@
-cask_args appdir: "/Applications"
-
 brew "asdf"
 brew "awscli"
 brew "coreutils"

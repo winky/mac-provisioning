@@ -12,3 +12,11 @@ enable_unattended: true
 enable_agent_user: true
 enable_ollama: true
 enable_launchd_jobs: true
+
+# Tailscale comes from the formula here (brew "tailscale"), so the CLI is on PATH and
+# tailscaled is a root LaunchDaemon started through brew services.
+tailscale_bin: /opt/homebrew/bin/tailscale
+tailscale_package: brew "tailscale"
+tailscale_start_hint: sudo brew services start tailscale
+# No menu bar on a machine that recovers unattended, so the CLI is the only way in.
+tailscale_login_hint: "Run `{{ tailscale_bin }} up` and approve the URL it prints."
