@@ -41,6 +41,13 @@
     - role: tailscale
       tags:
         - tailscale
+    # Gated rather than made harmless on the laptop: the settings it checks only make sense
+    # on a machine that is meant to come back by itself, and a laptop reporting that its
+    # FileVault is on would be noise.
+    - role: unattended
+      when: enable_unattended
+      tags:
+        - unattended
     - role: macos
       tags:
         - macos

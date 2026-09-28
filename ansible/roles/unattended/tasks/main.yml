@@ -1,0 +1,7 @@
+---
+#
+# unattended/tasks/main.yml
+# main task for unattended
+#
+- name: Unattended Verify
+  ansible.builtin.import_tasks: verify.yml

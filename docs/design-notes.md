@@ -508,7 +508,7 @@ private なのは `claude-config` だけなので、**認証が必要になる�
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / tailscale / macos / claude_config
+4. `make deploy` — dotfiles / tailscale / unattended / macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -524,6 +524,51 @@ ghq ルートは各ロールが自前の変数（既定 `~/src`、`install.sh` �
 `~/.config/git` を配置するのは同じ play の中なので、`claude_config` ロールが `git config --get ghq.root`
 を読む形にはできるが、その値はチルダが展開されないまま返るため（後述の「ghq ルートの解決」を参照）
 変数で持つ方が単純である。
+
+## 無人稼働の設定は適用せず報告する
+
+`unattended` ロールは `pmset` を書き換えない。状態を読んで、打つべき `sudo pmset -a ...` を出すだけ
+である。
+
+理由は `make deploy` を**パスワード無しで実行できる状態に保つこと**にある。このロールが対象にする
+のは launchd のジョブを走らせる機体で、deploy が sudo プロンプトで止まるならジョブから呼べない。
+
+代償が小さいのは、ここで見る設定が**ドリフトしない**ためである。`pmset` の値も FileVault も自動
+ログインも、機体ごとに一度決めれば再起動をまたいで保たれる。手で一度打つコストは1コマンドだが、
+自動化すると以降すべての deploy にパスワードが付く。
+
+FileVault と自動ログインはもともと状態チェックだけの方針だった。前者は後から切ると全体の復号を
+待つことになり、後者は `/etc/kcpassword` に可逆な形でパスワードを書くことになる。
+
+### 管理しないもの
+
+`displaysleep` とスクリーンセーバは**意図的に対象外**にしている。無人で復帰することとディスプレイが
+点いていることは無関係で、Mac mini には手で使うモニタが繋がる。点けたままにしてもパネルを消耗する
+だけである。
+
+### autorestart は実機でしか確かめられない
+
+電源復旧後に自動起動する設定だが、**ノートの `pmset` 出力には現れない**。Intel 時代の SMC 設定で、
+Apple Silicon の Mac mini が公開しているかどうかは未検証である。
+
+ロールは「pmset が報告しない設定は未設定として扱う」ので、出力に無い環境では常に drift として
+報告される。`enable_unattended` が付く機体でしか走らないため実害はない。
+
+### 条件式に正規表現を置かない
+
+各設定を `when` の中で正規表現に照合する形を最初に書き、**動かなかった**。
+
+```yaml
+# 一致する行があっても False になる
+when: not unattended_pmset.stdout is search('(?m)^\s*' ~ item.key ~ '\s+' ~ item.value ~ '\b')
+```
+
+同じ式を `{{ }}` で囲むと正しく True を返す。`search('womp')` や `search('womp\s+1')` は素の `when`
+でも通るのに、`(?m)^` を含めた時点で通らなくなる。**バックスラッシュを含む条件式は `{{ }}` の中と
+評価経路が違う。**
+
+`pmset -g` を一度 dict に起こして**値として比較する**形に変えた。条件式から正規表現を外せば、この
+問題自体が起きない。
 
 ## 冪等性
 

@@ -1,0 +1,104 @@
+---
+#
+# unattended/tasks/verify.yml
+# Report what still stops this machine from running unattended
+#
+# Nothing here is applied. Every change needs root, and `make deploy` is meant to stay
+# runnable without a password: the machine this role targets is the one that will run
+# launchd jobs, and a deploy that stops for a sudo prompt cannot be part of them.
+#
+# The trade is cheap because none of these drift. pmset settings, FileVault and auto-login
+# are set once per machine and survive reboots, so a one-off manual step costs a single
+# command, while automating it would cost a password on every deploy from then on.
+#
+# So this role has the same shape as tailscale and claude_config: read the state, print the
+# exact command, do not fail the play. FileVault and auto-login were already going to be
+# report-only -- one cannot be turned off without a long decrypt, and the other means
+# handling a password in the clear.
+- name: Read the power settings
+  # Read-only, and wanted in check mode too. `pmset -g` rather than `-g custom` because
+  # this role only runs on the Mac mini, which has no battery: the live settings are the
+  # AC settings, and there is only one section to read.
+  ansible.builtin.command:
+    cmd: pmset -g
+  register: unattended_pmset
+  changed_when: false
+  check_mode: false
+
+# Parsed into a dict so that the comparison below is a value comparison. Matching each
+# setting with a regex inside `when` looked tidier and did not work: a bare conditional
+# carrying backslashes is evaluated differently from the same expression inside {{ }}, and
+# `(?m)^\s*sleep\s+0\b` silently failed to match a line it matches everywhere else. Keeping
+# regexes out of conditionals avoids the whole question.
+#
+# Only the first two fields are kept, which drops the parenthesised note pmset appends to
+# some values ("0 (sleep prevented by caffeinate, powerd)"). Settings whose name has spaces
+# ("Sleep On Power Button") end up as junk keys; harmless, since nothing looks them up.
+- name: Note the current power settings
+  ansible.builtin.set_fact:
+    unattended_pmset_current: >-
+      {{ dict(unattended_pmset.stdout_lines | map('trim') | select('match', '^[a-z]')
+              | map('regex_replace', '^(\S+)\s+(\S+).*$', '\1|\2')
+              | map('split', '|')) }}
+
+- name: Work out which power settings are wrong
+  ansible.builtin.set_fact:
+    unattended_pmset_drift: "{{ unattended_pmset_drift | default([]) + [item.key] }}"
+  loop: "{{ unattended_pmset_settings | dict2items }}"
+  # A setting pmset does not report at all counts as wrong, which is what puts autorestart
+  # on the list everywhere it is unsupported.
+  when: unattended_pmset_current[item.key] | default('') | string != item.value | string
+
+- name: Notify that the power settings are not set for unattended operation
+  ansible.builtin.debug:
+    msg: >-
+      {{ unattended_pmset_drift | join(', ') }} {{ 'is' if unattended_pmset_drift | length == 1 else 'are' }}
+      not set for unattended operation. Run:
+      sudo pmset -a{% for key in unattended_pmset_drift %} {{ key }} {{ unattended_pmset_settings[key] }}{% endfor %}
+  when: unattended_pmset_drift | default([]) | length > 0
+
+# FileVault has to be off for auto-login to be offered at all, and turning it off after the
+# fact means waiting out a full decrypt. It is a choice made in the macOS setup wizard, so
+# the only useful thing to do here is say so early.
+- name: Read the FileVault state
+  ansible.builtin.command:
+    cmd: fdesetup status
+  register: unattended_filevault
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Notify that FileVault is on
+  ansible.builtin.debug:
+    msg: >-
+      FileVault is on, so this machine cannot log in by itself after a restart and the
+      auto-login setting is not even shown. Turning it off now means a full decrypt; it is
+      chosen in the macOS setup wizard instead.
+  when: not unattended_filevault.stdout is search('FileVault is Off')
+
+# Writing kcpassword is how auto-login is enabled, and it stores the account password in a
+# form that is trivially reversible. Not something to put in a playbook.
+- name: Read the auto-login user
+  ansible.builtin.command:
+    cmd: defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser
+  register: unattended_autologin
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Notify that auto-login is not set
+  ansible.builtin.debug:
+    msg: >-
+      Auto-login is not set, so this machine will sit at the login window after a restart
+      and nothing on it is reachable. Set it in System Settings > Users & Groups. It is not
+      automated here because enabling it writes the account password to /etc/kcpassword in
+      a reversible form.
+  when: unattended_autologin.rc | default(1) != 0
+
+- name: Report that the machine is set up to run unattended
+  ansible.builtin.debug:
+    msg: Power settings, FileVault and auto-login are all set for unattended operation.
+  when:
+    - unattended_pmset_drift | default([]) | length == 0
+    - unattended_filevault.stdout is search('FileVault is Off')
+    - unattended_autologin.rc | default(1) == 0
