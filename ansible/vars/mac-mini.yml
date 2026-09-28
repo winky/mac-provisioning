@@ -9,9 +9,8 @@
 # they are not defaulted in group_vars/all.yml.
 #
 enable_unattended: true
-enable_agent_user: true
 enable_ollama: true
-enable_launchd_jobs: true
+enable_scheduled_jobs: true
 
 # Tailscale comes from the formula here (brew "tailscale"), so the CLI is on PATH and
 # tailscaled is a root LaunchDaemon started through brew services.

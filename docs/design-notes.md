@@ -501,14 +501,15 @@ playbook が持つのは**実行すべきかどうかを判定するためのリ
 | `mac-provisioning` | public |
 | `dotfiles` | public |
 | `claude-config` | **private** |
+| `scheduled-jobs` | **private** |
 
-private なのは `claude-config` だけなので、**認証が必要になる地点は1箇所に閉じている**。順序は
-そこを境に分ける。
+private は2つある（`scheduled-jobs` は Backlog のプロジェクトキーや Slack のチャンネル名を持つため）。
+**どちらも同じ境界の後ろ**にあり、認証が必要になる地点は増えていない。順序はそこを境に分ける。
 
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / tailscale / unattended / ollama / launchd / macos / claude_config
+4. `make deploy` — dotfiles / tailscale / unattended / ollama / scheduled_jobs / macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -537,6 +538,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 |---|---|---|
 | `dotfiles` / `claude_config` / `macos` | 収束 | ホーム配下と user defaults のみ |
 | `ollama` | 収束 | ホーム配下のファイルとユーザーの LaunchAgent のみ |
+| `scheduled_jobs` | 収束 | clone と相手の `make install`。どちらもホーム配下 |
 | `tailscale` | 報告 | デーモン起動が root。ログインはブラウザでの承認 |
 | `unattended` | 報告 | `pmset` が root。FileVault は設定ウィザードの選択 |
 
@@ -545,8 +547,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 自動化すると以降すべての deploy にパスワードが付く。
 
 この境目を破りかけたのは `agent-user`（`dscl` でのユーザー作成は root が必要で、かつ「一度打てば
-終わり」とも言いにくい）だが、**そのロールを作らない判断をしたため試されずに済んだ**。残る
-`launchd` は `~/Library/LaunchAgents` に plist を置くだけなので収束側に収まる。
+終わり」とも言いにくい）だが、**そのロールを作らない判断をしたため試されずに済んだ**。
 
 ## エージェント専用ユーザーは作らない
 
@@ -586,8 +587,10 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 ただし**蓄積データの移行コストは増え続ける** — `~/src` のリポジトリ、`~/.claude`、**ollama の
 モデル（数十GB規模）**、keychain の項目。早いほど安い。
 
-安い保険として **`launchd` ロールだけは対象ユーザーのホームを変数で持つ**（既定は playbook 実行
-ユーザーのホーム）。完成済みロールの変数化は投機的なので行わない。
+ジョブを別リポジトリへ出したことで、**この保険は不要になった**。`scheduled-jobs` の `make install`
+は `$(HOME)` に置くので、専用ユーザーを作るなら**そのユーザーとして `make install` を呼ぶ**だけで
+追随する。playbook 側に変数を用意する必要がない。完成済みロールの変数化は依然として投機的なので
+行わない。
 
 ### 再検討の契機
 
@@ -744,46 +747,54 @@ formula の service 定義に `require_root` が無いので、`brew services st
 認証なしのエンドポイントを置く判断になるため、必要になった時点で改めて決める。ロールは現在の
 待ち受けを報告に含めて、この判断が忘れられないようにしている。
 
-## launchd は受け皿だけを作る
+## ジョブはこのリポジトリが持たない
 
-`launchd_jobs` は**空で出荷している**。ジョブA（全リポジトリの最新化）とジョブB（朝のタスク
-ブリーフ）は Phase 4 の話で、ここで発明しない。**中身を知らないまま受け皿を設計すると、形を
-間違える。** 空のまま通せばロールは no-op になり、機構の検証は `-e` でジョブ定義を注入して行う。
+スケジュール実行するジョブは [winky/scheduled-jobs](https://github.com/winky/scheduled-jobs) が
+持つ。**このリポジトリが持つのは「この機体でジョブを動かすか」だけ**である
+（`enable_scheduled_jobs`）。
 
-各エントリは `name` / `command`（リスト）/ `hour` / `minute`、任意で `environment` を取る。
+一度は逆に作った。`launchd` ロールが `launchd_jobs` というジョブ定義のリストを受け取り、plist を
+組み立てて load していた。**それは上の「ロールは対象リポジトリの make ターゲットを呼ぶ」に反して
+いる。** あの節はこう述べている。
 
-### `launchd_home` は将来の分離のための継ぎ目
+> リンクの定義がリポジトリ側の1箇所に収まり、**対象が増えても playbook を直す必要がない**
 
-専用ユーザーは作らないと決めたが、後から作る方向へは変更できる。その時に**このロールは変数1つの
-上書きで追随する**。完成済みのロールに同じ継ぎ目を入れていないのは、投機的な手直しになるからで、
-このロールだけは決定の後に書いているので入れておく価値がある。
+ところが `launchd` ロールは、他所が所有する中身のために plist の形・テンプレート・bootout /
+bootstrap を playbook 側に実装しており、**ジョブが増えるたびに playbook を直す設計**だった。
 
-### FileVault があるので 07:00 に動かないことがある
+### 分けた理由
 
-`gui/<uid>` ドメインに置く LaunchAgent は、**解錠されるまで読み込まれない**。停電の後に誰も解錠して
-いなければ、07:00 のジョブはその時刻には動かない。
+1. **変更の頻度が違う。** プロビジョニングは機体や道具を変えた時しか触らない。ジョブの判定基準や
+   プロンプトは運用しながら頻繁に触る
+2. **検証の仕方が違う。** ここの CI は macOS ランナーで playbook を適用する。ジョブに必要なのは
+   Backlog / Slack / LLM を絡めた検証で、ansible を通す必要がない
+3. **寿命と移植性が違う。** リポジトリ最新化のジョブは bash ＋ git ＋ ghq だけで動き、macOS 固有の
+   要素が無い。機体を入れ替えても Linux に移してもそのまま動く
 
-ただし `StartCalendarInterval` は**取り逃した回を復帰後に実行する**ので、動かないのではなく遅れる。
-ジョブの側が「今日まだ動いていないか」を前提に書かれていればよく、毎朝ちょうど 07:00 に動くことを
-前提にはできない。
+### 境界
 
-### `RunAtLoad` は false
+| | 所有者 |
+|---|---|
+| ジョブが何をするか / **いつ動くか** / plist の設置 | scheduled-jobs（`make install`） |
+| この機体でジョブを動かすか | ここ（`enable_scheduled_jobs`） |
+| リポジトリを置き `make install` を呼ぶ | ここ（`scheduled_jobs` ロール） |
+| 秘密情報を Keychain に入れる | ここ（`secrets` ロール。Phase 4） |
+| **Keychain のサービス名** | **両者のインターフェース** |
 
-deploy の副作用としてジョブが走ってはいけない。トリガーは `StartCalendarInterval` だけにしている。
+「いつ動かすか」もジョブ側に置いた。機体の方針ではないかという反論はあり得るが、**ジョブを動かす
+機体は1台**で、`enable_scheduled_jobs` が動かすか否かを担う。時刻はジョブの性質（朝のブリーフは朝で
+ないと意味がない）なのでジョブ側が自然である。
 
-### PATH は plist に書く
+### changed の判定は相手の出力に任せる
 
-launchd はシェルの初期化ファイルを読まないので、ジョブは plist に書いた PATH しか持たない
-（`/opt/homebrew/bin` を先頭に置く。ジョブが使う `ghq` も `gh` も `ollama` もそこにある）。
+`make -C <repo> install` は毎回走る。変更があったかどうかは**相手の出力**で決める — あの Makefile は
+plist を実際に書いた時だけ `placed <label>` を出すので、それを見る。
 
-`StandardOutPath` のディレクトリも launchd は作らない。**作られていないとジョブは理由を言わずに
-失敗する**ので、ロールが先に作る。
+ここで判定を自前で書くと、相手がすでに行っている比較を再実装することになる。それはこの分割で
+取り除いた重複そのものである。
 
-### 変更したジョブだけ入れ替える
-
-launchd はジョブ定義の写しを自前で持つため、plist を書き換えても**boot out して boot in するまで
-反映されない**。変更があったものだけを対象にしているのは、deploy が関係のないジョブを止めないように
-するため。
+なお `make -C` で足りる。あの Makefile は自分の位置を `MAKEFILE_LIST` から解決するので、
+`claude-config` のように呼ぶ側の `chdir` を要求しない。
 
 ## 冪等性
 

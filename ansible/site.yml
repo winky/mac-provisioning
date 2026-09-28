@@ -52,10 +52,10 @@
       when: enable_ollama
       tags:
         - ollama
-    - role: launchd
-      when: enable_launchd_jobs
+    - role: scheduled_jobs
+      when: enable_scheduled_jobs
       tags:
-        - launchd
+        - scheduled_jobs
     - role: macos
       tags:
         - macos
