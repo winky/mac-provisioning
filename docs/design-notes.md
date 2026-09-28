@@ -508,7 +508,7 @@ private なのは `claude-config` だけなので、**認証が必要になる�
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / tailscale / unattended / macos / claude_config
+4. `make deploy` — dotfiles / tailscale / unattended / ollama / macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -629,6 +629,50 @@ when: not unattended_pmset.stdout is search('(?m)^\s*' ~ item.key ~ '\s+' ~ item
 
 `pmset -g` を一度 dict に起こして**値として比較する**形に変えた。条件式から正規表現を外せば、この
 問題自体が起きない。
+
+## ollama は収束させる
+
+`unattended` と違い、`ollama` ロールは**状態を報告せず実際に収束させる**。境目は root の要否である。
+このロールが触るのはホーム配下のファイルとユーザーの LaunchAgent だけなので、`make deploy` を
+パスワード無しで実行できる状態を崩さない。
+
+`pmset` や FileVault のように root が必要なものだけを報告に留める、という切り分けになる。
+
+### モデル置き場は Homebrew の env ファイルで渡す
+
+`OLLAMA_MODELS` を service に渡す必要があるが、formula の service 定義は
+`OLLAMA_FLASH_ATTENTION` と `OLLAMA_KV_CACHE_TYPE` を持つだけで `OLLAMA_MODELS` は無い。
+
+Homebrew には専用の仕組みがある。
+
+```
+$HOMEBREW_USER_CONFIG_HOME/services/<formula>.env   （既定 ~/.homebrew/services/<formula>.env）
+KEY=value を1行ずつ
+```
+
+これを使うと **plist は formula のものであり続ける**。自前で plist を書くと、formula が env を
+足したときに追随しなければならなくなる。`launchctl setenv` はセッション全体に効いてしまい、
+`~/.ollama/models` への symlink はリポジトリから見えない場所に設定を追い出す。どちらも採らない。
+
+移行は `ansible/vars/mac-mini.yml` の `ollama_models_path` を1行変えるだけになる。env ファイルが
+変われば handler が `brew services restart` する（service は読み込み時にしか env を見ない）。
+
+### LaunchAgent と LaunchDaemon の差が消えている
+
+formula の service 定義に `require_root` が無いので、`brew services start` が置くのは
+**LaunchAgent** である（`tailscale` は `require_root: true` なので LaunchDaemon）。
+
+以前ならこれは弱い選択だった。LaunchAgent はログインを待つためである。しかし **FileVault を
+有効にした結果、解錠より前には何も動かない**。解錠がログインを兼ねるので、この機体では両者が
+実質同じタイミングになる。
+
+### OLLAMA_HOST は広げない
+
+既定の `127.0.0.1:11434` のままにしている。ジョブB は同じ機体で動くのでこれで足りる。
+
+ノートから直接叩くには `OLLAMA_HOST` を広げることになるが、**ollama は認証を持たない**。tailnet に
+認証なしのエンドポイントを置く判断になるため、必要になった時点で改めて決める。ロールは現在の
+待ち受けを報告に含めて、この判断が忘れられないようにしている。
 
 ## 冪等性
 
