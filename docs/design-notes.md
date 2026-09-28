@@ -302,15 +302,20 @@ undefined variable で落ちる。
 
 ### Brewfile は機種固有のものだけ分ける
 
-`Brewfile`（共通）/ `Brewfile.laptop` / `Brewfile.mac-mini` の3本。**GUI と CLI では分けない** —
-Mac mini はヘッドレスだが SSH 越しに対話利用するため、GUI アプリの大半は両方に必要である。
+`Brewfile`（共通）/ `Brewfile.laptop` / `Brewfile.mac-mini` の3本。**GUI と CLI では分けない。**
+Mac mini は常時稼働・無人復帰させるが SSH 専用ではなく、ディスプレイと入力機器を付けて対話利用も
+する。GUI アプリは両方に必要である。
 
-現時点で機種固有なのは2つだけ。
+現時点で機種固有なのは `ollama` だけ。
 
 | | 入るもの | 理由 |
 |---|---|---|
-| `Brewfile.laptop` | `bettertouchtool` | トラックパッドのジェスチャ。Mac mini にトラックパッドは無い |
-| `Brewfile.mac-mini` | `ollama` | ローカル LLM。アプリではなく formula を使う。ヘッドレス機で常駐させるため |
+| `Brewfile.laptop` | なし | 下記のとおり空で置く |
+| `Brewfile.mac-mini` | `ollama` | ローカル LLM。アプリではなく formula を使い、常駐させる |
+
+`Brewfile.laptop` を空のまま残すのは、両プロファイルが実ファイルに解決されるようにするためである。
+`init.sh` がファイルの不在を許容すると、プロファイル名を間違えたときに黙ってスキップされる。
+`brew bundle` はコメントだけのファイルで exit 0 になるので、空ファイルは no-op として安全に扱える。
 
 ## dotfiles は ghq 配下に置く
 
