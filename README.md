@@ -68,6 +68,7 @@ cd ansible && ansible-playbook site.yml --tags macos
 | Homebrew 導入時の sudo パスワード | インストーラが要求する |
 | cask の許可ダイアログ | アプリによって出る |
 | `gh` の認証（`gh auth login --git-protocol ssh`） | 対話が必須。認証と同時に SSH 鍵の生成・登録も行う。private な `claude-config` の取得もこれに依存する |
+| Claude Code の導入 | native installer（`~/.local/bin/claude`）を使う。cask は PATH で負けるうえ、`zap` が `~/.claude` を消す。[docs/design-notes.md](docs/design-notes.md) を参照 |
 | 入力ソース（キーボード / 日本語入力） | macOS が辞書の配列で保存しており `osx_defaults` では表現できないため。[docs/design-notes.md](docs/design-notes.md) を参照 |
 
 設計上の制約と、その判断の理由は [docs/design-notes.md](docs/design-notes.md) に残している。
