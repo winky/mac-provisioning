@@ -1,0 +1,87 @@
+---
+#
+# keychain/tasks/install.yml
+# Copy the credentials the scheduled jobs need out of 1Password and into the login keychain
+#
+# Two stores, because they are reachable at different times. `op read` wants Touch ID or the
+# 1Password app, which a job running from launchd cannot provide, so the jobs read the login
+# keychain instead. This role is the one-off bridge: it runs while a person is present, as part
+# of provisioning, and leaves the jobs something they can read unattended.
+#
+# With FileVault on and no auto-login the login keychain opens when someone unlocks the machine,
+# which is also the only moment a LaunchAgent starts -- so a job and its credentials become
+# available together.
+#
+# op cannot be signed in from here, so this probes and reports rather than failing the play, the
+# same shape as claude_config and tailscale. The next `make deploy` finishes the work.
+- name: Check whether 1Password is signed in
+  ansible.builtin.command:
+    cmd: op whoami
+  register: keychain_op_session
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags: [skip_test]
+
+- name: Notify that 1Password is not signed in
+  ansible.builtin.debug:
+    msg: >-
+      1Password is not signed in, so {{ keychain_items | length }} credential(s) were not copied
+      into the keychain: {{ keychain_items | map(attribute='service') | join(', ') }}.
+      Run `op signin`, then re-run `make deploy`.
+  when:
+    - keychain_items | length > 0
+    - keychain_op_session.rc | default(1) != 0
+  tags: [skip_test]
+
+- name: Load the credentials
+  when:
+    - keychain_items | length > 0
+    - keychain_op_session.rc | default(1) == 0
+  tags: [skip_test]
+  block:
+    # no_log on every task that touches a value. The two reads are separate from the write so
+    # that writing only happens when something actually differs: `security add-generic-password
+    # -U` succeeds either way and would report a change on every run.
+    - name: Read the credentials from 1Password
+      ansible.builtin.command:
+        cmd: op read {{ item.reference }}
+      register: keychain_from_op
+      loop: "{{ keychain_items }}"
+      changed_when: false
+      check_mode: false
+      no_log: true
+
+    - name: Read what the keychain already holds
+      ansible.builtin.command:
+        cmd: security find-generic-password -s {{ item.service }} -w
+      register: keychain_current
+      loop: "{{ keychain_items }}"
+      changed_when: false
+      # Not holding it yet is the normal case the first time, and find-generic-password says so
+      # with a non-zero exit.
+      failed_when: false
+      check_mode: false
+      no_log: true
+
+    # The value goes in on stdin, twice, because the prompt asks for it and then asks again to
+    # confirm. Passing it to -w as an argument would put the credential in the process list,
+    # where anything running as this user could read it.
+    #
+    # no_log hides which items were written along with the values, so the report below lists the
+    # services rather than trying to say which ones changed. The play recap still shows how many.
+    - name: Store the credentials that are missing or out of date
+      ansible.builtin.command:
+        cmd: security add-generic-password -U -s {{ item.0.item.service }} -a {{ ansible_facts.user_id }} -w
+        stdin: "{{ item.0.stdout }}\n{{ item.0.stdout }}\n"
+        stdin_add_newline: false
+      loop: "{{ keychain_from_op.results | zip(keychain_current.results) | list }}"
+      when: item.0.stdout != item.1.stdout
+      changed_when: true
+      no_log: true
+
+    - name: Report which credentials the keychain holds
+      ansible.builtin.debug:
+        msg: >-
+          {{ keychain_items | length }} credential(s) in the keychain:
+          {{ keychain_items | map(attribute='service') | join(', ') }}.

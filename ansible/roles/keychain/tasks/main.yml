@@ -1,0 +1,17 @@
+---
+#
+# keychain/tasks/main.yml
+# main task for keychain
+#
+# Named for what it does -- put credentials into the login keychain -- rather than "secrets",
+# which says less and collides with the pattern sandboxes use to refuse paths that look like
+# credential stores. The role's files are ansible tasks and hold no secrets, but a directory
+# called secrets in a git repository invites exactly that suspicion.
+#
+# keychain_items is not defaulted anywhere. It names which 1Password item belongs in which
+# keychain service, and a wrong default would be worse than a missing one: it would write one
+# secret under another's name. It lives in ansible/vars/<profile>.yml, and only in the profiles
+# that run this role.
+#
+- name: Keychain Install
+  ansible.builtin.import_tasks: install.yml

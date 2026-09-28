@@ -24,3 +24,19 @@ tailscale_login_hint: "Run `{{ tailscale_bin }} up` and approve the URL it print
 # change it here and nothing else. Only defined for this profile: the ollama role is gated on
 # enable_ollama, so the laptop never reads it.
 ollama_models_path: "{{ ansible_facts.env.HOME }}/.ollama/models"
+
+# Credentials the scheduled jobs read, copied out of 1Password into the login keychain by the
+# keychain role. `service` is the keychain service name the job looks up -- that name is the
+# interface between this repository and winky/scheduled-jobs. `reference` is an op:// path.
+#
+# Empty until the 1Password references are filled in. They are not guessed: a wrong reference
+# either fails or, worse, writes the contents of one credential under another's name. Nothing
+# secret goes here -- an op:// path is a pointer, and the keychain service name is already
+# public in the job that reads it.
+#
+# The one known entry is the Slack webhook that refresh-repositories posts its summary to:
+#
+#   keychain_items:
+#     - service: scheduled-jobs-slack-webhook
+#       reference: op://<vault>/<item>/<field>
+keychain_items: []

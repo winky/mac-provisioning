@@ -52,6 +52,10 @@
       when: enable_ollama
       tags:
         - ollama
+    - role: keychain
+      when: enable_scheduled_jobs
+      tags:
+        - keychain
     - role: scheduled_jobs
       when: enable_scheduled_jobs
       tags:

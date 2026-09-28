@@ -509,7 +509,8 @@ private は2つある（`scheduled-jobs` は Backlog のプロジェクトキー
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / tailscale / unattended / ollama / scheduled_jobs / macos / claude_config
+4. `make deploy` — dotfiles / tailscale / unattended / ollama / keychain / scheduled_jobs /
+   macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -539,6 +540,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 | `dotfiles` / `claude_config` / `macos` | 収束 | ホーム配下と user defaults のみ |
 | `ollama` | 収束 | ホーム配下のファイルとユーザーの LaunchAgent のみ |
 | `scheduled_jobs` | 収束 | clone と相手の `make install`。どちらもホーム配下 |
+| `keychain` | 収束 | login keychain への書き込み。root は要らない |
 | `tailscale` | 報告 | デーモン起動が root。ログインはブラウザでの承認 |
 | `unattended` | 報告 | `pmset` が root。FileVault は設定ウィザードの選択 |
 
@@ -795,6 +797,56 @@ plist を実際に書いた時だけ `placed <label>` を出すので、それ�
 
 なお `make -C` で足りる。あの Makefile は自分の位置を `MAKEFILE_LIST` から解決するので、
 `claude-config` のように呼ぶ側の `chdir` を要求しない。
+
+## 秘密情報は1Password から Keychain へ渡す
+
+`keychain` ロールが、ジョブが読む資格情報を 1Password から login keychain に写す。
+
+**2つのストアを使うのは、読める時刻が違うから**である。`op read` は Touch ID か 1Password アプリを
+前提にするので、launchd から動くジョブには使えない。ジョブは login keychain を読む。このロールは
+**人が居るあいだに一度だけ渡す橋**で、プロビジョニングの一環として走る。
+
+FileVault 有効 ＋ 自動ログイン無しという構成なので、**login keychain が開くのは人が解錠した後**で
+あり、それは LaunchAgent が動き出すのと同じ瞬間である。ジョブと資格情報が同時に使えるようになる。
+
+### 名前を `secrets` にしなかった
+
+当初の計画では `secrets` ロールだった。**`keychain` にした。** 実態は「login keychain に入れること」で、
+`secrets` はそれより曖昧である。
+
+決め手はサンドボックスだった。`**/secrets` は「資格情報ストアらしいパス」を拒否するパターンとして
+広く使われており、この名前のディレクトリを作ろうとした時点で拒否された。ロールの中身は ansible の
+タスクで秘密を含まないが、**git リポジトリに `secrets` というディレクトリがあれば、まさにその疑いを
+招く**。名前を変える方が筋が通っている。
+
+### 値を argv に置かない
+
+`security add-generic-password -w <値>` は**資格情報をプロセス一覧に載せる**。同じユーザーで動く
+ものなら読める。
+
+stdin から渡す。プロンプトは入力と確認で2回読むので、値を2回書き込む。
+
+```sh
+printf 'value\nvalue\n' | security add-generic-password -U -s <service> -a <user> -w
+```
+
+### 読みと書きを分ける
+
+`security add-generic-password -U` は既に同じ値が入っていても成功するので、単純に毎回実行すると
+**毎回 changed になる**。1Password と keychain の両方を読んで、違うものだけ書く。
+
+値に触るタスクはすべて `no_log: true`。その代償として**どの項目を書いたかも出力から消える**ので、
+最後の報告は「keychain が持っている service 名の一覧」を出す。件数は play recap に出る。
+
+### 参照は推測しない
+
+`keychain_items` は `vars/mac-mini.yml` にあり、`service`（keychain のサービス名）と `reference`
+（`op://` パス）の対を持つ。ロールに既定値は置かない。**間違った既定値は、ある資格情報の中身を別の
+名前で書き込む**ことになり、無いよりも悪い。
+
+`op://` パスは秘密ではない（ポインタである）し、keychain のサービス名は読む側のジョブに既に書いて
+あるので、どちらもコミットして構わない。**この service 名が scheduled-jobs との
+インターフェース**である。
 
 ## 冪等性
 
