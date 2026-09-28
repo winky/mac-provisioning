@@ -2,6 +2,38 @@
 - name: MacOS Provisioning
   hosts: local
   become: false
+
+  pre_tasks:
+    # host_profile normally arrives as an extra var from `make deploy`, which asks
+    # scripts/host-profile.sh. Resolve it the same way here so that a bare
+    # `ansible-playbook site.yml` behaves identically, and so the rule lives in exactly
+    # one place. It cannot be done with a fact: ansible_product_name is the model
+    # *identifier*, which no longer carries the product name -- a current Mac mini
+    # reports "Mac16,10", not "Macmini9,1". The script reads the marketing name instead.
+    - name: Resolve the host profile
+      ansible.builtin.command: "{{ provision_root }}/scripts/host-profile.sh"
+      # Read-only, and it has to run in check mode too: command is not check-mode
+      # capable, so without this the task is skipped by --check, host_profile never
+      # gets set, and loading the profile file fails.
+      check_mode: false
+      register: host_profile_cmd
+      changed_when: false
+      when: host_profile is not defined
+      tags: always
+
+    - name: Set the host profile
+      ansible.builtin.set_fact:
+        host_profile: "{{ host_profile_cmd.stdout | trim }}"
+      when: host_profile is not defined
+      tags: always
+
+    # include_vars fails on a missing file, so an unrecognised profile stops the run
+    # rather than quietly taking the group defaults. Tagged always because the variables
+    # are needed even for a single-role run such as `--tags macos`.
+    - name: "Load the profile variables: {{ host_profile }}"
+      ansible.builtin.include_vars: "vars/{{ host_profile }}.yml"
+      tags: always
+
   roles:
     - role: dotfiles
       tags:

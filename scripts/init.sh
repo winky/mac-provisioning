@@ -38,3 +38,9 @@ fi
 
 # --no-lock was removed in Homebrew 6.x (no lockfile is generated at all).
 brew bundle --file "${PROVISION_ROOT}/Brewfile"
+
+# Machine-specific packages. host-profile.sh exits non-zero on a model it does not
+# recognise and `set -e` stops us here, so there is no path where the profile file is
+# silently skipped and the machine ends up half-provisioned.
+PROFILE="$("${SCRIPT_DIR}/host-profile.sh")"
+brew bundle --file "${PROVISION_ROOT}/Brewfile.${PROFILE}"

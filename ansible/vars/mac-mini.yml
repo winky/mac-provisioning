@@ -1,0 +1,14 @@
+---
+#
+# vars/mac-mini.yml
+# Always on and recovers unattended, hosts the agents -- and used interactively with a
+# display too, which is why the switch is enable_unattended rather than enable_headless:
+# it gates power management and auto-login, not the absence of a screen.
+#
+# Every switch is listed, including any that end up false: see vars/laptop.yml for why
+# they are not defaulted in group_vars/all.yml.
+#
+enable_unattended: true
+enable_agent_user: true
+enable_ollama: true
+enable_launchd_jobs: true

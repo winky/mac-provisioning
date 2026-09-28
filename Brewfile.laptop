@@ -1,0 +1,12 @@
+# Laptop-only packages.
+#
+# Applied after the shared Brewfile by scripts/init.sh, which picks this file from
+# scripts/host-profile.sh.
+#
+# Empty on purpose. Nothing is laptop-only right now: the Mac mini is not used only over
+# SSH -- it gets a display and input devices too -- so the GUI applications, including
+# bettertouchtool, belong in the shared Brewfile.
+#
+# The file is kept rather than deleted so that both profiles resolve to a real file. If
+# init.sh had to tolerate a missing one, a mistyped profile would be skipped in silence
+# instead of failing, which is the same reason vars/laptop.yml spells out every switch.

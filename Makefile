@@ -2,6 +2,12 @@
 PROVISIONPATH := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 ANSIBLEPATH := $(PROVISIONPATH)/ansible
 
+# The profile (laptop | mac-mini) is resolved by scripts/host-profile.sh from the
+# hardware, so no argument is needed on either machine. Exported rather than passed
+# through, so that both `HOST_PROFILE=mac-mini make deploy` and
+# `make deploy HOST_PROFILE=mac-mini` reach the script.
+export HOST_PROFILE
+
 # ansible-lint runs in its own Homebrew virtualenv with no collections in it, while
 # the ansible formula keeps its bundled collections inside its own virtualenv rather
 # than the shared ~/.ansible/collections path. Point ansible-lint at that location,
@@ -18,10 +24,12 @@ init: ## Install Xcode CLT, Homebrew and Brewfile packages
 	@bash $(PROVISIONPATH)/scripts/init.sh
 
 deploy: ## Run ansible-playbook
-	@cd $(ANSIBLEPATH) && ansible-playbook site.yml
+	@profile="$$($(PROVISIONPATH)/scripts/host-profile.sh)" \
+	  && cd $(ANSIBLEPATH) && ansible-playbook site.yml -e host_profile="$$profile"
 
 check: ## Dry-run ansible-playbook (no changes are made)
-	@cd $(ANSIBLEPATH) && ansible-playbook site.yml --check --diff
+	@profile="$$($(PROVISIONPATH)/scripts/host-profile.sh)" \
+	  && cd $(ANSIBLEPATH) && ansible-playbook site.yml --check --diff -e host_profile="$$profile"
 
 lint: ## Run ansible-lint
 	@cd $(ANSIBLEPATH) && ANSIBLE_COLLECTIONS_PATH="$(BUNDLED_COLLECTIONS)" ansible-lint --offline -c .ansible-lint site.yml
