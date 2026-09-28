@@ -15,7 +15,7 @@
 #
 # HOST_PROFILE overrides the detection, for a VM, a CI runner, or any machine whose
 # model is neither of the two. An unrecognised model is an error rather than a guess:
-# provisioning a laptop as a headless box is worse than stopping.
+# provisioning a laptop as the always-on box is worse than stopping.
 #
 set -euo pipefail
 

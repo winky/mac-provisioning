@@ -285,16 +285,26 @@ ansible としては素直だが、**両ホストが `ansible_connection: local`
 ではなくエラーにしている。`vars/laptop.yml` が全スイッチを `false` で明示しているのも同じ理由で、
 両プロファイルが実ファイルに解決されることを保証している。
 
+### スイッチ名は unattended、headless ではない
+
+Mac mini は常時稼働・無人復帰させるが、ディスプレイと入力機器を付けて対話利用もする。
+`enable_unattended` が gate するのは電源管理（`pmset` の sleep 無効、`autorestart`）と自動ログイン、
+スクリーンセーバ無効であって、**画面の有無ではない**。
+
+当初は `enable_headless` としていた。この名前は「画面が無い＝GUI 設定は不要」という読み違いを誘う。
+実際に一度そう判断し、`macos` ロールを Mac mini でスキップする / トラックパッド系 defaults を落とす /
+`bettertouchtool` をノート専用にする、という3つの誤りにつながっている。
+
 ### enable_* を group_vars で既定値にしない
 
-`enable_headless` などのロールスイッチは `group_vars/all.yml` に**置かない**。
+`enable_unattended` などのロールスイッチは `group_vars/all.yml` に**置かない**。
 
 ansible の precedence では `include_vars`（#18）が playbook の `group_vars/all`（#5）を上回る。
 両プロファイルが全スイッチを定義している限り group_vars 側の値は**一度も読まれない**。
 
 問題は冗長さではなく、スイッチを1つ書き忘れたときの挙動である。group_vars に既定値があると、
 `vars/mac-mini.yml` への追記を忘れた時点で `false` が黙って効き、**必要な機体でロールが
-スキップされる**。エラーは出ない。既定値を置かなければ `when: enable_headless` が
+スキップされる**。エラーは出ない。既定値を置かなければ `when: enable_unattended` が
 undefined variable で落ちる。
 
 `include_vars` を存在しないファイルで失敗させてタイポを検出しているのと同じ判断である。
