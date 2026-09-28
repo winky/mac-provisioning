@@ -21,7 +21,6 @@ brew "ansible-lint"
 
 cask "1password"
 cask "1password-cli"
-cask "bettertouchtool"
 cask "discord"
 cask "docker-desktop"
 cask "figma"

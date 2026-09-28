@@ -34,6 +34,17 @@ make check   # 差分の確認（何も変更しない）
 make deploy  # 適用
 ```
 
+### プロファイル
+
+ノートと Mac mini の差は `host_profile`（`laptop` | `mac-mini`）で表現する。
+`scripts/host-profile.sh` が機種名から判定するので、**どちらの機体でも引数は要らない**。
+
+```sh
+HOST_PROFILE=mac-mini make deploy   # 判定を上書きする（VM、CI、未知の機種）
+```
+
+判定できない機種ではエラーで停止する。理由は [docs/design-notes.md](docs/design-notes.md) を参照。
+
 ## make ターゲット
 
 | target | 内容 |
@@ -48,10 +59,15 @@ make deploy  # 適用
 ## 構成
 
 ```
-Brewfile              brew / cask のパッケージ
-scripts/install.sh    新しい Mac で最初に実行する
-scripts/init.sh       Homebrew と Brewfile
-ansible/site.yml      dotfiles / macos / claude_config の3ロール
+Brewfile                 共通の brew / cask パッケージ
+Brewfile.laptop          ノート固有
+Brewfile.mac-mini        Mac mini 固有
+scripts/install.sh       新しい Mac で最初に実行する
+scripts/init.sh          Homebrew と Brewfile
+scripts/host-profile.sh  機種から laptop / mac-mini を判定する
+ansible/site.yml         dotfiles / macos / claude_config の3ロール
+ansible/group_vars/      両プロファイル共通の変数
+ansible/vars/            プロファイルごとの変数
 ```
 
 ロール単位で流すときは tag を使う。

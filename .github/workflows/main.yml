@@ -27,11 +27,14 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install ansible
         run: brew install ansible
+      # host_profile is passed explicitly: the runner is neither a MacBook nor a Mac mini,
+      # so scripts/host-profile.sh would (correctly) refuse to guess. laptop is the profile
+      # whose switches are all off, which is what a runner should exercise.
       - name: Run ansible-playbook
-        run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test
+        run: ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test -e host_profile=laptop
       - name: Run ansible-playbook again and assert idempotence
         run: |
-          ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test \
+          ansible-playbook ansible/site.yml -i ansible/inventories/macOS/local.yml --skip-tags skip_test -e host_profile=laptop \
             | tee /tmp/idempotence.log
           grep -q 'changed=0.*failed=0' /tmp/idempotence.log \
             || { echo "playbook is not idempotent"; exit 1; }

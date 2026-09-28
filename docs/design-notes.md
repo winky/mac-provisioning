@@ -237,6 +237,66 @@ Brewfile に `cask "claude-code"` があったが、実際の Claude Code は na
 Claude Code 自身が自己更新するため、宣言的に持つ利点も小さい。当日の手順書側に手動インストール
 として置く。
 
+## 機種差はプロファイルで表現する
+
+ノートと Mac mini の違いを `host_profile`（`laptop` | `mac-mini`）1つに集約する。判定は
+`scripts/host-profile.sh` にしか無く、`scripts/init.sh`（どの Brewfile を渡すか）と `Makefile`
+（playbook への `-e host_profile=`）の両方がこれを呼ぶ。`HOST_PROFILE` で上書きできる。
+
+### inventory を2ホストにしない
+
+当初の計画は inventory に `laptop` / `mac-mini` を並べ `host_vars/` で差を表現するものだった。
+ansible としては素直だが、**両ホストが `ansible_connection: local`** であるため、この用途では
+危険な穴が開く。
+
+- `site.yml` は `hosts: all` にせざるを得ず、`--limit` を忘れると**両プロファイルが同じ機体に
+  適用される**（ヘッドレス向けの設定がノートに入る）
+- `--limit` のタイポは `no hosts matched` の警告だけで **exit 0**。プロビジョニングが黙って
+  何もしない
+- 着荷当日、新品の Mac mini で `HOST=mac-mini` を付け忘れる経路が残る
+
+加えて **Brewfile の分割は bash 側でも機種判定を要求する**。`brew bundle` に include の仕組みは
+無く、`init.sh` がどのファイルを渡すか決めなければならない。inventory では解決しない。つまり
+2ホスト構成は判定機構を減らすのではなく、判定スクリプトの上に inventory の穴を積む形になる。
+
+そのため inventory は `local` 1台のままにし、差は変数で表現する。
+
+### 機種の判定に model identifier を使わない
+
+`sysctl -n hw.model` と ansible の `ansible_product_name` が返すのは model identifier で、
+**Apple は識別子から製品名を外した**。Mac mini は以前 `Macmini9,1` だったが、現行機は
+`Mac16,10` のような形を返す。`Macmini*` での前方一致は**まさに新しい Mac mini で外れる**。
+
+`system_profiler SPHardwareDataType` の `Model Name` は製品名（`Mac mini` / `MacBook Pro`）を
+返すので、こちらを使う。164ms かかるが、プロビジョニングの所要時間では問題にならない。
+
+未知の機種は `HOST_PROFILE` の明示を促して**失敗させる**。ノートをヘッドレス機として
+プロビジョニングするより、止まる方がましである。CI ランナーはどちらにも一致しないので、
+ワークフローが `-e host_profile=laptop` を明示している。
+
+### プロファイルの解決は check モードでも走らせる
+
+`ansible.builtin.command` は check モード非対応なので `--check` では既定でスキップされる。
+解決タスクがスキップされると `host_profile` が未設定のまま `include_vars` に届き、素の
+`ansible-playbook site.yml --check` が壊れる。読み取り専用のスクリプトなので `check_mode: false`
+を付ける。
+
+`include_vars` は存在しないファイルで失敗する。これが `host_profile` のタイポを silent fallback
+ではなくエラーにしている。`vars/laptop.yml` が `group_vars/all.yml` の既定値をそのまま書き直して
+いるのは、両プロファイルが実ファイルに解決されるようにするためである。
+
+### Brewfile は機種固有のものだけ分ける
+
+`Brewfile`（共通）/ `Brewfile.laptop` / `Brewfile.mac-mini` の3本。**GUI と CLI では分けない** —
+Mac mini はヘッドレスだが SSH 越しに対話利用するため、GUI アプリの大半は両方に必要である。
+
+現時点で機種固有なのは2つだけ。
+
+| | 入るもの | 理由 |
+|---|---|---|
+| `Brewfile.laptop` | `bettertouchtool` | トラックパッドのジェスチャ。Mac mini にトラックパッドは無い |
+| `Brewfile.mac-mini` | `ollama` | ローカル LLM。アプリではなく formula を使う。ヘッドレス機で常駐させるため |
+
 ## dotfiles は ghq 配下に置く
 
 `dotfiles_path` は ghq のルート配下（既定 `~/src/github.com/winky/dotfiles`）を指す。以前は

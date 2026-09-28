@@ -1,0 +1,9 @@
+---
+#
+# vars/mac-mini.yml
+# Headless, always on, hosts the agents.
+#
+enable_headless: true
+enable_agent_user: true
+enable_ollama: true
+enable_launchd_jobs: true

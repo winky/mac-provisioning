@@ -1,0 +1,10 @@
+# Mac mini only packages.
+#
+# Applied after the shared Brewfile by scripts/init.sh, which picks this file from
+# scripts/host-profile.sh. The split is by machine, not by GUI vs CLI: the Mac mini is
+# used interactively too, so anything that is not machine-specific stays in Brewfile.
+
+# Local LLM runtime. The formula rather than an app bundle, so it can be kept running by
+# a launchd job on a headless machine. The model directory moves with OLLAMA_MODELS once
+# the external NVMe arrives, which is why nothing here hardcodes a path.
+brew "ollama"

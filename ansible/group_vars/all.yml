@@ -1,0 +1,21 @@
+---
+#
+# group_vars/all.yml
+# Play-level variables shared by both profiles.
+#
+
+# ghq owns the local clones. Each role falls back to the same default so it still works
+# when run without this file, but the value belongs here: dotfiles and claude_config have
+# to agree on one root, so it is not a per-role choice.
+ghq_root: "{{ ansible_facts.env.HOME }}/src"
+
+# Where this repository is checked out. Used to reach scripts/ from the playbook.
+provision_root: "{{ playbook_dir }}/.."
+
+# Role switches, set per profile in vars/<profile>.yml. No role reads them yet -- the
+# roles they gate (headless, agent-user, ollama, launchd) arrive in Phase 3 -- but the
+# defaults live here so that adding a role means adding one entry, not restructuring.
+enable_headless: false
+enable_agent_user: false
+enable_ollama: false
+enable_launchd_jobs: false

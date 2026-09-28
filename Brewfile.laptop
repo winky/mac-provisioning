@@ -1,0 +1,10 @@
+# Laptop-only packages.
+#
+# Applied after the shared Brewfile by scripts/init.sh, which picks this file from
+# scripts/host-profile.sh. The split is by machine, not by GUI vs CLI: the Mac mini is
+# used interactively too, so anything that is not machine-specific stays in Brewfile.
+
+cask_args appdir: "/Applications"
+
+# Trackpad gestures. The Mac mini runs headless and has no trackpad.
+cask "bettertouchtool"
