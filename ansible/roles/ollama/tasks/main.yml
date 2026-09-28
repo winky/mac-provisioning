@@ -1,0 +1,7 @@
+---
+#
+# ollama/tasks/main.yml
+# main task for ollama
+#
+- name: Ollama Install
+  ansible.builtin.import_tasks: install.yml

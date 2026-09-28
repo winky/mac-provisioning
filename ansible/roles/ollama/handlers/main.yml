@@ -1,0 +1,10 @@
+---
+#
+# ollama/handlers/main.yml
+#
+# brew services reads the env file when it loads the service, so a changed file does nothing
+# until the service is reloaded.
+- name: Restart ollama
+  ansible.builtin.command:
+    cmd: brew services restart {{ ollama_formula }}
+  changed_when: true

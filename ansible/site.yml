@@ -48,6 +48,10 @@
       when: enable_unattended
       tags:
         - unattended
+    - role: ollama
+      when: enable_ollama
+      tags:
+        - ollama
     - role: macos
       tags:
         - macos

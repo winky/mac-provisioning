@@ -20,3 +20,8 @@ tailscale_package: brew "tailscale"
 tailscale_start_hint: sudo brew services start tailscale
 # No menu bar on a machine that recovers unattended, so the CLI is the only way in.
 tailscale_login_hint: "Run `{{ tailscale_bin }} up` and approve the URL it prints."
+
+# Where ollama keeps its models. The one value that moves when the external NVMe arrives --
+# change it here and nothing else. Only defined for this profile: the ollama role is gated on
+# enable_ollama, so the laptop never reads it.
+ollama_models_path: "{{ ansible_facts.env.HOME }}/.ollama/models"

@@ -65,7 +65,7 @@ Brewfile.mac-mini        Mac mini 固有
 scripts/install.sh       新しい Mac で最初に実行する
 scripts/init.sh          Homebrew と Brewfile
 scripts/host-profile.sh  機種から laptop / mac-mini を判定する
-ansible/site.yml         dotfiles / tailscale / unattended / macos / claude_config の5ロール
+ansible/site.yml         dotfiles / tailscale / unattended / ollama / macos / claude_config の6ロール
 ansible/group_vars/      両プロファイル共通の変数
 ansible/vars/            プロファイルごとの変数
 ```

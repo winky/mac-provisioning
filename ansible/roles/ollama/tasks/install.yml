@@ -1,0 +1,85 @@
+---
+#
+# ollama/tasks/install.yml
+# Point ollama at its model directory and keep it running
+#
+# Unlike tailscale and unattended, this role converges rather than reports. Everything it
+# does is user-level -- a file under $HOME and a LaunchAgent -- so none of it needs root, and
+# `make deploy` stays runnable without a password.
+#
+# The formula's service block has no require_root, so `brew services start` installs a
+# LaunchAgent rather than a LaunchDaemon. That used to be the weaker choice because a
+# LaunchAgent waits for a login, but with FileVault on nothing runs before someone unlocks
+# anyway: the unlock is the login, so the two are equivalent here.
+#
+# ollama itself comes from Brewfile.mac-mini. This role does not install it -- packages belong
+# to the Brewfile -- so it reports and stops if the binary is not there yet.
+- name: Check whether ollama is installed
+  ansible.builtin.stat:
+    path: "{{ ollama_binary }}"
+  register: ollama_installed
+
+- name: Notify that ollama is not installed
+  ansible.builtin.debug:
+    msg: >-
+      {{ ollama_binary }} is missing. Run `make init` to apply the Brewfile, which has
+      brew "{{ ollama_formula }}" for this profile.
+  when: not ollama_installed.stat.exists
+
+- name: Set up ollama
+  when: ollama_installed.stat.exists
+  block:
+    # Created rather than assumed: ollama would make it on first use, but the whole point of
+    # the variable is that the directory may live somewhere else, and pointing the service at
+    # a path that does not exist yet fails less clearly than this does.
+    - name: Ensure the model directory exists
+      ansible.builtin.file:
+        path: "{{ ollama_models_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Ensure the Homebrew service env directory exists
+      ansible.builtin.file:
+        path: "{{ ollama_service_env_dir }}"
+        state: directory
+        mode: "0755"
+
+    # One variable, so that moving the models to the external NVMe later is a change to
+    # ansible/vars/mac-mini.yml and nothing else.
+    - name: Point ollama at the model directory
+      ansible.builtin.copy:
+        dest: "{{ ollama_service_env_dir }}/{{ ollama_formula }}.env"
+        content: |
+          OLLAMA_MODELS={{ ollama_models_path }}
+        mode: "0644"
+      notify: Restart ollama
+
+    - name: Read the Homebrew service state
+      ansible.builtin.command:
+        cmd: brew services list --json
+      register: ollama_services
+      changed_when: false
+      check_mode: false
+
+    - name: Note whether ollama is running
+      ansible.builtin.set_fact:
+        ollama_service_status: >-
+          {{ ollama_services.stdout | from_json | selectattr('name', 'equalto', ollama_formula)
+             | map(attribute='status') | first | default('absent') }}
+
+    # Left to `brew services` rather than driven through launchctl, so that the plist stays
+    # the formula's business. Not run in check mode, which is what --check should mean.
+    - name: Start ollama
+      ansible.builtin.command:
+        cmd: brew services start {{ ollama_formula }}
+      changed_when: true
+      when: ollama_service_status != 'started'
+
+    - name: Report the ollama endpoint
+      ansible.builtin.debug:
+        msg: >-
+          ollama is running with its models in {{ ollama_models_path }}. It listens on
+          127.0.0.1:11434 by default, which is where a job on this machine reaches it.
+          Reaching it from another machine would need OLLAMA_HOST widened, which is not set
+          here: it would put an endpoint with no authentication on the tailnet.
+      when: ollama_service_status == 'started'

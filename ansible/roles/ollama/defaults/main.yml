@@ -1,0 +1,21 @@
+---
+#
+# ollama/defaults/main.yml
+#
+# ollama_models_path is deliberately not here. It is the one value that changes per machine
+# -- and will change again when the external NVMe arrives -- so it lives in
+# ansible/vars/mac-mini.yml. A default here would quietly point at the internal disk on a
+# machine that meant to use the external one.
+#
+# Only the profiles that actually run this role define it: the role is gated on
+# enable_ollama, so the laptop never reaches these tasks and has no reason to carry the
+# variable.
+ollama_formula: ollama
+ollama_binary: /opt/homebrew/bin/ollama
+
+# Homebrew's own mechanism for adding environment variables to a service it manages:
+# $HOMEBREW_USER_CONFIG_HOME/services/<formula>.env, KEY=value one per line. Using it means
+# brew services stays the thing that owns the launchd plist -- no hand-written plist to keep
+# in step with the formula, which already sets OLLAMA_FLASH_ATTENTION and
+# OLLAMA_KV_CACHE_TYPE of its own accord.
+ollama_service_env_dir: "{{ ansible_facts.env.HOME }}/.homebrew/services"
