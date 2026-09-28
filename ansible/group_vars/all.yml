@@ -10,7 +10,11 @@
 ghq_root: "{{ ansible_facts.env.HOME }}/src"
 
 # Where this repository is checked out. Used to reach scripts/ from the playbook.
-provision_root: "{{ playbook_dir }}/.."
+#
+# realpath rather than a bare `playbook_dir ~ '/..'`: the path is not only executed but also
+# written into a launchd plist, where ".../ansible/../scripts/..." is legible to a machine and
+# annoying to a person reading it.
+provision_root: "{{ (playbook_dir ~ '/..') | ansible.builtin.realpath }}"
 
 # The enable_* role switches are deliberately NOT defaulted here. include_vars outranks
 # group_vars, so a default would never be read while both profile files define every

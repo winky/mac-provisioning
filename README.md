@@ -59,15 +59,17 @@ HOST_PROFILE=mac-mini make deploy   # 判定を上書きする（VM、CI、未�
 ## 構成
 
 ```
-Brewfile                 共通の brew / cask パッケージ
-Brewfile.laptop          ノート固有
-Brewfile.mac-mini        Mac mini 固有
-scripts/install.sh       新しい Mac で最初に実行する
-scripts/init.sh          Homebrew と Brewfile
-scripts/host-profile.sh  機種から laptop / mac-mini を判定する
-ansible/site.yml         dotfiles / tailscale / unattended / ollama / launchd / macos / claude_config の7ロール
-ansible/group_vars/      両プロファイル共通の変数
-ansible/vars/            プロファイルごとの変数
+Brewfile                         共通の brew / cask パッケージ
+Brewfile.laptop                  ノート固有
+Brewfile.mac-mini                Mac mini 固有
+scripts/install.sh               新しい Mac で最初に実行する
+scripts/init.sh                  Homebrew と Brewfile
+scripts/host-profile.sh          機種から laptop / mac-mini を判定する
+scripts/refresh-repositories.sh  ジョブA。ghq 配下を毎朝 fast-forward する
+ansible/site.yml                 7ロール（dotfiles / tailscale / unattended /
+                                 ollama / launchd / macos / claude_config）
+ansible/group_vars/              両プロファイル共通の変数
+ansible/vars/                    プロファイルごとの変数
 ```
 
 ロール単位で流すときは tag を使う。

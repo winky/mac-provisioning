@@ -25,3 +25,15 @@ tailscale_login_hint: "Run `{{ tailscale_bin }} up` and approve the URL it print
 # change it here and nothing else. Only defined for this profile: the ollama role is gated on
 # enable_ollama, so the laptop never reads it.
 ollama_models_path: "{{ ansible_facts.env.HOME }}/.ollama/models"
+
+# Job A. Every repository under the ghq root, brought up to date each morning.
+#
+# 07:00 is when it is asked to run, not when it will: a LaunchAgent is not loaded until
+# someone unlocks FileVault, so on a machine left locked overnight launchd runs it on the way
+# back up instead. The script does not care what time it ran.
+launchd_jobs:
+  - name: refresh-repositories
+    command:
+      - "{{ provision_root }}/scripts/refresh-repositories.sh"
+    hour: 7
+    minute: 0
