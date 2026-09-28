@@ -20,3 +20,6 @@ enable_launchd_jobs: false
 tailscale_bin: /Applications/Tailscale.app/Contents/MacOS/Tailscale
 tailscale_package: cask "tailscale-app"
 tailscale_start_hint: open -a Tailscale (the first launch asks to allow its network extension)
+# The app build logs in from its menu bar item; the bundled CLI also works. The cask
+# installs the standalone (macsys) build, whose CLI is not restricted like the App Store one.
+tailscale_login_hint: "Log in from the Tailscale menu bar item, or run `{{ tailscale_bin }} up`."

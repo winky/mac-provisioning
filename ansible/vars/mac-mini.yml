@@ -18,3 +18,5 @@ enable_launchd_jobs: true
 tailscale_bin: /opt/homebrew/bin/tailscale
 tailscale_package: brew "tailscale"
 tailscale_start_hint: sudo brew services start tailscale
+# No menu bar on a machine that recovers unattended, so the CLI is the only way in.
+tailscale_login_hint: "Run `{{ tailscale_bin }} up` and approve the URL it prints."

@@ -57,7 +57,7 @@
   ansible.builtin.debug:
     msg: >-
       Tailscale is running but not logged in (BackendState: {{ tailscale_backend_state }}).
-      Run `{{ tailscale_bin }} up` and approve the URL it prints. Every machine that has to
+      {{ tailscale_login_hint }} Every machine that has to
       reach this one needs to join the same tailnet.
   when:
     - tailscale_backend_state is defined
