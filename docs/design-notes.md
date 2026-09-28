@@ -335,6 +335,23 @@ Mac mini は常時稼働・無人復帰させるが SSH 専用ではなく、デ
 不在を許容すると、プロファイル名を間違えたときに黙ってスキップされる。`brew bundle` はコメント
 だけのファイルで exit 0 になるので、空ファイルは no-op として安全に扱える。
 
+### cask_args は書かない
+
+`cask_args appdir: "/Applications"` を全ファイルから外した。`/Applications` は Homebrew の
+**既定値**（`Library/Homebrew/cask/config.rb`）なので、この行は何も変えていなかった。
+
+ただし「共通 `Brewfile` に書いてあるから分割ファイルでは不要」という理解は誤りである。
+`cask_args` はファイル単位のディレクティブで、`init.sh` は2回に分けて呼ぶ。
+
+```sh
+brew bundle --file "${PROVISION_ROOT}/Brewfile"
+brew bundle --file "${PROVISION_ROOT}/Brewfile.${PROFILE}"
+```
+
+**`--file` の呼び出しをまたいで継承されない。** 既定以外の `appdir` を使いたくなったら、cask を
+含む全ファイルに書く必要がある。既定値と同じ行を置いたままにすると、この継承関係を誤読させる
+うえ、意味を持っているように見えてしまう。
+
 ### Tailscale は機体で入れ方を変える
 
 同じ 1.102.4 が formula と cask の両方にある。要件が違うので機体ごとに選ぶ。
