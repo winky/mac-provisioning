@@ -52,6 +52,10 @@
       when: enable_ollama
       tags:
         - ollama
+    - role: launchd
+      when: enable_launchd_jobs
+      tags:
+        - launchd
     - role: macos
       tags:
         - macos

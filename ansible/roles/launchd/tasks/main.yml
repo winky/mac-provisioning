@@ -1,0 +1,7 @@
+---
+#
+# launchd/tasks/main.yml
+# main task for launchd
+#
+- name: Launchd Install
+  ansible.builtin.import_tasks: install.yml
