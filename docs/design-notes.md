@@ -151,21 +151,43 @@ ghq ルートを移動すると ghq 自身のパスが壊れる。`~/development
 launchd のジョブから使う場合も効く。launchd はシェルの初期化ファイルを読まないため、どちらの場合も
 plist で PATH を指定するか絶対パスで呼ぶ必要があるが、その絶対パスがリポジトリの位置に依存しなくなる。
 
-### fzf と asdf は dotfiles のままにしてある
+### fzf と asdf も Homebrew から入れる
 
-この2つの zinit 宣言は**シェル統合まで行っている**。
+ghq と同じ理由である。zinit はこの2つの本体も ghq ルートの内側に置いていた。
 
-```zsh
-# fzf: install スクリプトが補完とキーバインドを設定する
-atclone'./install --xdg --no-update-rc --completion --key-bindings'
-multisrc'shell/{key-bindings,completion}.zsh'
+`~/development` → `~/src` の移行で、asdf の shims が実際に全滅した。
 
-# asdf: shims を PATH に前置する
-atload'PATH=$HOME/.asdf/shims:$PATH;'
+```
+$ python3 -c '...'
+/Users/winky/.asdf/shims/python3: line 3: exec: asdf: not found
 ```
 
-Homebrew に移すとシェルの起動経路が変わる。方針としては移す対象だが、他の変更と混ぜずに単独で
-扱うべきものとして残している。
+shims は `~/.asdf`（ghq ルートの外）なので残るが、そこから呼ばれる本体が消えた。shim の中身は
+`exec asdf exec "python3" "$@"` で、**asdf 本体を PATH から引く**ため何も動かなくなる。
+
+当初は「シェル統合まで行っているので単独で扱う」として保留していたが、統合の実体は薄い。
+
+| | 移行前 | 移行後 |
+|---|---|---|
+| fzf | `atclone'./install --completion --key-bindings'` ＋ `multisrc'shell/{key-bindings,completion}.zsh'` | `eval "$(fzf --zsh)"` |
+| asdf | `atload'PATH=$HOME/.asdf/shims:$PATH;'` | 同じ1行を dotfiles 側に残す |
+
+- fzf は 0.48 以降、自身が補完とキーバインドを出力する。install スクリプトと `shell/*.zsh` は不要
+- asdf は 0.16 で `asdf.sh` を廃止した。統合は shims の前置だけで、旧来の「`asdf.sh` を source
+  する」方式ではない。ただし **asdf の formula は caveats を持たない**ため、shims を PATH に置け
+  とは誰も教えてくれない。dotfiles 側の1行が asdf を機能させている唯一の要素になる
+- 入るのは Homebrew の asdf 0.20.2 / fzf 0.74.4（zinit 経由は v0.18.0 / 0.62.0）。どちらの asdf も
+  0.16 以降の Go 版なので、`ASDF_DATA_DIR`（`~/.asdf`）の plugins / installs はそのまま使える
+
+引き受けるリスクは `brew upgrade` で asdf 本体が意図せず上がること。言語ランタイムの基盤なので
+0.15 → 0.16 級の破壊的変更が来ると全部止まる。ただし移行前の `from'gh-r'` も常に最新リリースを
+取っていたので**リスクは増えない**。`brew pin asdf` で止められる分だけ改善する（`Brewfile` 単体では
+バージョンを固定できない）。
+
+dotfiles 側はシェル統合を「本体がどこから来たか」と独立させ、関数に切り出して両経路から呼ぶ。
+`$+commands[...]` で判定するため、**この Brewfile と dotfiles はどちらを先に適用しても壊れない**。
+asdf の宣言に残っていた `bpick'*darwin-arm64*'` 決め打ち（ghq / gh で直したのと同じ穴）も、
+この変更で uname 由来になった。
 
 ## dotfiles は ghq 配下に置く
 
