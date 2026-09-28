@@ -402,6 +402,31 @@ play を失敗させないので、次の `make deploy` がその先の状態を
 `status --json` の rc を `failed_when: false` で保持しているのは、**デーモンに繋がらないことと
 ログインしていないことが別の状態**であり、同じ案内を出すと手戻りになるためである。
 
+この分岐は `status --json` の挙動に依存している。実機（GUI アプリ版、未ログイン）で確認した結果:
+
+```
+$ /Applications/Tailscale.app/Contents/MacOS/Tailscale status --json ; echo $?
+{ "BackendState": "NeedsLogin", "Self": { "DNSName": "", ... } }
+0
+```
+
+**未ログインでも rc は 0 で、状態は `BackendState` に出る。** ここが非ゼロだと、ロールは
+「デーモンに繋がらない」という誤った案内を出す。ロールが状態を取り違えるようになったら、
+最初に疑うのはこの前提である。
+
+`Self.DNSName` は未ログイン時は空文字列になる。`Running` のメッセージで tailnet 名を出すのを
+やめたのはこのため（`json_query` は `community.general` 依存で、collection を追加しない方針にも
+反する）。
+
+### ログインの案内はプロファイルで変える
+
+同じ「未ログイン」でも打つものが違う。ノートは GUI アプリなのでメニューバーから入るのが自然で、
+Mac mini には無人復帰の途中でクリックできるメニューバーが無い。`tailscale_login_hint` を
+`vars/<profile>.yml` に置いて出し分ける。
+
+cask が入れるのは standalone（`io.tailscale.ipn.macsys`）ビルドなので、ノートでも CLI の `up` は
+使える。App Store 版（`io.tailscale.ipn.macos`）ほど制限されていない。
+
 ## dotfiles は ghq 配下に置く
 
 `dotfiles_path` は ghq のルート配下（既定 `~/src/github.com/winky/dotfiles`）を指す。以前は
