@@ -285,6 +285,15 @@ ansible としては素直だが、**両ホストが `ansible_connection: local`
 ではなくエラーにしている。`vars/laptop.yml` が全スイッチを `false` で明示しているのも同じ理由で、
 両プロファイルが実ファイルに解決されることを保証している。
 
+自動判定には、実行時にどのプロファイルが効いたか分からないという弱点がある。引数方式なら
+コマンド履歴に残る情報が消える。そのため `include_vars` のタスク名に解決結果を入れてある。
+
+```
+TASK [Load the profile variables: mac-mini] ***
+```
+
+テンプレートを名前の末尾に置いているのは ansible-lint の `name[template]` を満たすため。
+
 ### スイッチ名は unattended、headless ではない
 
 Mac mini は常時稼働・無人復帰させるが、ディスプレイと入力機器を付けて対話利用もする。

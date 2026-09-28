@@ -30,7 +30,7 @@
     # include_vars fails on a missing file, so an unrecognised profile stops the run
     # rather than quietly taking the group defaults. Tagged always because the variables
     # are needed even for a single-role run such as `--tags macos`.
-    - name: Load the host profile variables
+    - name: "Load the profile variables: {{ host_profile }}"
       ansible.builtin.include_vars: "vars/{{ host_profile }}.yml"
       tags: always
 
