@@ -1,24 +1,37 @@
 ---
 #
 # unattended/tasks/verify.yml
-# Report what still stops this machine from running unattended
+# Report what still stops this machine from staying up on its own
 #
 # Nothing here is applied. Every change needs root, and `make deploy` is meant to stay
 # runnable without a password: the machine this role targets is the one that will run
 # launchd jobs, and a deploy that stops for a sudo prompt cannot be part of them.
 #
-# The trade is cheap because none of these drift. pmset settings, FileVault and auto-login
-# are set once per machine and survive reboots, so a one-off manual step costs a single
-# command, while automating it would cost a password on every deploy from then on.
+# The trade is cheap because none of these drift. pmset settings and FileVault are set once
+# per machine and survive reboots, so a one-off manual step costs a single command, while
+# automating it would cost a password on every deploy from then on.
 #
 # So this role has the same shape as tailscale and claude_config: read the state, print the
-# exact command, do not fail the play. FileVault and auto-login were already going to be
-# report-only -- one cannot be turned off without a long decrypt, and the other means
-# handling a password in the clear.
+# exact command, do not fail the play.
+#
+# FileVault stays ON, which is a deliberate trade rather than an oversight. macOS has no way
+# to unlock it without a person -- no auto-unlock, no network unlock, and MDM's authenticated
+# restart has to be issued from a running system, which a machine sitting at the unlock screen
+# is not. So an unexpected power cut needs someone to walk over.
+#
+# What that buys is worth more here than the availability it costs. The machine is used by
+# hand as well as unattended, so a thief who powers it on would otherwise be straight in. And
+# on Apple Silicon the pre-boot unlock *is* the login, so keeping FileVault on removes the
+# auto-login step altogether: nothing has to write the account password to /etc/kcpassword,
+# and the login keychain is not unlocked until a person unlocks it.
 - name: Read the power settings
   # Read-only, and wanted in check mode too. `pmset -g` rather than `-g custom` because
   # this role only runs on the Mac mini, which has no battery: the live settings are the
   # AC settings, and there is only one section to read.
+  #
+  # Testing it on a laptop is therefore power-state dependent -- `pmset -g` follows whichever
+  # source is active, so unplugging the machine changes which settings look wrong. That is an
+  # artefact of the test machine, not of the target.
   ansible.builtin.command:
     cmd: pmset -g
   register: unattended_pmset
@@ -57,9 +70,6 @@
       sudo pmset -a{% for key in unattended_pmset_drift %} {{ key }} {{ unattended_pmset_settings[key] }}{% endfor %}
   when: unattended_pmset_drift | default([]) | length > 0
 
-# FileVault has to be off for auto-login to be offered at all, and turning it off after the
-# fact means waiting out a full decrypt. It is a choice made in the macOS setup wizard, so
-# the only useful thing to do here is say so early.
 - name: Read the FileVault state
   ansible.builtin.command:
     cmd: fdesetup status
@@ -68,37 +78,44 @@
   failed_when: false
   check_mode: false
 
-- name: Notify that FileVault is on
+# Turning it on is a choice made in the macOS setup wizard; doing it afterwards means waiting
+# out a full encrypt, which is why this only reports.
+- name: Notify that FileVault is off
   ansible.builtin.debug:
     msg: >-
-      FileVault is on, so this machine cannot log in by itself after a restart and the
-      auto-login setting is not even shown. Turning it off now means a full decrypt; it is
-      chosen in the macOS setup wizard instead.
-  when: not unattended_filevault.stdout is search('FileVault is Off')
+      FileVault is off. This machine is used by hand as well as unattended, so the disk
+      should be encrypted: without it, powering the machine on is enough to read everything
+      on it. Turn it on in System Settings > Privacy & Security, and expect a full encrypt.
+  when: not unattended_filevault.stdout is search('FileVault is On')
 
-# Writing kcpassword is how auto-login is enabled, and it stores the account password in a
-# form that is trivially reversible. Not something to put in a playbook.
-- name: Read the auto-login user
+# Without this, even a restart for an OS update needs someone at the keyboard, which would
+# make the machine much harder to keep current from a distance.
+- name: Check whether an authenticated restart is supported
   ansible.builtin.command:
-    cmd: defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser
-  register: unattended_autologin
+    cmd: fdesetup supportsauthrestart
+  register: unattended_authrestart
   changed_when: false
   failed_when: false
   check_mode: false
 
-- name: Notify that auto-login is not set
+- name: Notify that authenticated restart is unavailable
   ansible.builtin.debug:
     msg: >-
-      Auto-login is not set, so this machine will sit at the login window after a restart
-      and nothing on it is reachable. Set it in System Settings > Users & Groups. It is not
-      automated here because enabling it writes the account password to /etc/kcpassword in
-      a reversible form.
-  when: unattended_autologin.rc | default(1) != 0
+      This machine cannot do an authenticated restart, so every reboot -- planned ones
+      included -- needs someone to unlock FileVault in person. Planned reboots would
+      otherwise go through `sudo fdesetup authrestart`.
+  when: not unattended_authrestart.stdout is search('true')
 
-- name: Report that the machine is set up to run unattended
+# Deliberately worded as what it is. With FileVault on, an unexpected power cut still stops
+# at the unlock screen; no amount of pmset changes that, and claiming otherwise would be the
+# one thing this report must not do.
+- name: Report what the machine can and cannot do on its own
   ansible.builtin.debug:
-    msg: Power settings, FileVault and auto-login are all set for unattended operation.
+    msg: >-
+      Power settings are right, the disk is encrypted, and planned restarts can be driven
+      remotely with `sudo fdesetup authrestart`. An unexpected power cut still stops at the
+      FileVault unlock screen and needs a person: that is the trade FileVault makes here.
   when:
     - unattended_pmset_drift | default([]) | length == 0
-    - unattended_filevault.stdout is search('FileVault is Off')
-    - unattended_autologin.rc | default(1) == 0
+    - unattended_filevault.stdout is search('FileVault is On')
+    - unattended_authrestart.stdout is search('true')
