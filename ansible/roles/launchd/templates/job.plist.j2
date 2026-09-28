@@ -1,0 +1,51 @@
+{#
+  job.plist.j2
+  One LaunchAgent per entry in launchd_jobs.
+
+  RunAtLoad is false so that a deploy never fires the job as a side effect of placing it.
+  StartCalendarInterval is the only trigger: launchd runs a missed occurrence once the
+  machine is awake again, which matters here because FileVault means the agent is not even
+  loaded until someone unlocks -- a job scheduled for 07:00 on a locked machine runs late
+  rather than not at all.
+#}
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{{ launchd_label_prefix }}.{{ item.name }}</string>
+
+    <key>ProgramArguments</key>
+    <array>
+{% for argument in item.command %}
+        <string>{{ argument }}</string>
+{% endfor %}
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>{{ item.hour }}</integer>
+        <key>Minute</key>
+        <integer>{{ item.minute }}</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{{ launchd_job_path }}</string>
+{% for key, value in (item.environment | default({})) | dictsort %}
+        <key>{{ key }}</key>
+        <string>{{ value }}</string>
+{% endfor %}
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>{{ launchd_log_dir }}/{{ item.name }}.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ launchd_log_dir }}/{{ item.name }}.log</string>
+</dict>
+</plist>

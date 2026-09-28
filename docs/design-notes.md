@@ -508,7 +508,7 @@ private なのは `claude-config` だけなので、**認証が必要になる�
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / tailscale / unattended / ollama / macos / claude_config
+4. `make deploy` — dotfiles / tailscale / unattended / ollama / launchd / macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -743,6 +743,47 @@ formula の service 定義に `require_root` が無いので、`brew services st
 ノートから直接叩くには `OLLAMA_HOST` を広げることになるが、**ollama は認証を持たない**。tailnet に
 認証なしのエンドポイントを置く判断になるため、必要になった時点で改めて決める。ロールは現在の
 待ち受けを報告に含めて、この判断が忘れられないようにしている。
+
+## launchd は受け皿だけを作る
+
+`launchd_jobs` は**空で出荷している**。ジョブA（全リポジトリの最新化）とジョブB（朝のタスク
+ブリーフ）は Phase 4 の話で、ここで発明しない。**中身を知らないまま受け皿を設計すると、形を
+間違える。** 空のまま通せばロールは no-op になり、機構の検証は `-e` でジョブ定義を注入して行う。
+
+各エントリは `name` / `command`（リスト）/ `hour` / `minute`、任意で `environment` を取る。
+
+### `launchd_home` は将来の分離のための継ぎ目
+
+専用ユーザーは作らないと決めたが、後から作る方向へは変更できる。その時に**このロールは変数1つの
+上書きで追随する**。完成済みのロールに同じ継ぎ目を入れていないのは、投機的な手直しになるからで、
+このロールだけは決定の後に書いているので入れておく価値がある。
+
+### FileVault があるので 07:00 に動かないことがある
+
+`gui/<uid>` ドメインに置く LaunchAgent は、**解錠されるまで読み込まれない**。停電の後に誰も解錠して
+いなければ、07:00 のジョブはその時刻には動かない。
+
+ただし `StartCalendarInterval` は**取り逃した回を復帰後に実行する**ので、動かないのではなく遅れる。
+ジョブの側が「今日まだ動いていないか」を前提に書かれていればよく、毎朝ちょうど 07:00 に動くことを
+前提にはできない。
+
+### `RunAtLoad` は false
+
+deploy の副作用としてジョブが走ってはいけない。トリガーは `StartCalendarInterval` だけにしている。
+
+### PATH は plist に書く
+
+launchd はシェルの初期化ファイルを読まないので、ジョブは plist に書いた PATH しか持たない
+（`/opt/homebrew/bin` を先頭に置く。ジョブが使う `ghq` も `gh` も `ollama` もそこにある）。
+
+`StandardOutPath` のディレクトリも launchd は作らない。**作られていないとジョブは理由を言わずに
+失敗する**ので、ロールが先に作る。
+
+### 変更したジョブだけ入れ替える
+
+launchd はジョブ定義の写しを自前で持つため、plist を書き換えても**boot out して boot in するまで
+反映されない**。変更があったものだけを対象にしているのは、deploy が関係のないジョブを止めないように
+するため。
 
 ## 冪等性
 

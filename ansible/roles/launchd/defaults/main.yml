@@ -1,0 +1,28 @@
+---
+#
+# launchd/defaults/main.yml
+#
+# launchd_home is the seam left for a dedicated agent user. There is none today -- the
+# separation it would buy is already covered by Claude Code's sandbox, and the cost had
+# grown (see docs/design-notes.md) -- but if one is ever added, this role follows it by
+# overriding one variable rather than being rewritten. The finished roles were deliberately
+# not given the same seam: doing that speculatively is churn, and this is the one role being
+# written after the decision.
+launchd_home: "{{ ansible_facts.env.HOME }}"
+launchd_agents_dir: "{{ launchd_home }}/Library/LaunchAgents"
+launchd_log_dir: "{{ launchd_home }}/Library/Logs/mac-provisioning"
+
+# gui/<uid> rather than user/<uid>: an Aqua session is what a LaunchAgent needs, and it is
+# the domain that exists once someone has unlocked.
+launchd_domain: "gui/{{ ansible_facts.user_uid }}"
+launchd_label_prefix: dev.winky.mac-provisioning
+
+# launchd does not read shell startup files, so a job gets the PATH given here or nothing
+# useful. /opt/homebrew/bin first, because everything this machine runs jobs with (ghq, gh,
+# ollama) lives there.
+launchd_job_path: /opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+# Empty on purpose. The jobs themselves (A: refresh every repository, B: the morning brief)
+# are Phase 4 and are not invented here: a receptacle shaped by guesswork would be shaped
+# wrongly. Each entry takes name, command (a list), hour, minute, and optionally environment.
+launchd_jobs: []
