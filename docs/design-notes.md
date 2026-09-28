@@ -189,6 +189,54 @@ dotfiles 側はシェル統合を「本体がどこから来たか」と独立�
 asdf の宣言に残っていた `bpick'*darwin-arm64*'` 決め打ち（ghq / gh で直したのと同じ穴）も、
 この変更で uname 由来になった。
 
+### cask は Caskroom ではなく実体を見て決める
+
+Brewfile に無いが実機に入っている cask が12個あった。取り込むかどうかは **Caskroom の日付や
+バージョンでは判断できない**。自己更新するアプリは Caskroom の記録が古いまま残る。
+
+- `tableplus` — Caskroom は 5.3.4（2023-03）だが、`/Applications/TablePlus.app` は 26.10.20
+  （2026-09）。**使用中**
+- `firefox` — 自己更新するアプリなのに `/Applications` が 108.0.2（2023-01）のまま。
+  **起動していない**
+
+判断は `/Applications` の実体（`CFBundleShortVersionString` と mtime）で行った。
+
+| 取り込む | 落とす |
+|---|---|
+| `google-japanese-ime` `session-manager-plugin` `tableplus` | `firefox` `android-studio` `wifi-explorer` — 実体が2023年から動いていない |
+| | `postico` `adobe-creative-cloud` — `/Applications` に実体が無い |
+| | `superset` — 実体は新しいが使っていない（下記） |
+
+**実体の新しさは使用中の証明にはならない。** `superset` は `/Applications/Superset.app` が
+1.12.1（2026-06）で、この調査では「使用中」に分類したが、実際にはもう使っていなかった。
+mtime で分かるのは「更新が止まっている＝使っていない」の方向だけで、その逆は言えない。
+**新しい側は本人に確認する必要がある。**
+
+方針で除外するもの。
+
+- `sbx` — Docker Sandbox を使わない決定による。独自 tap `winky/tap` 由来でもある
+- `adoptopenjdk` — cask が homebrew-cask から削除済みで API が 404 を返す。Brewfile に書けない。
+  Java が必要になったら asdf の java プラグインで入れる
+
+### docker cask は docker-desktop に改名された
+
+`docker-desktop` の API が `old_tokens: ["docker"]` を返す。`cask "docker"` は旧トークンで、
+Caskroom には `docker` と `docker-desktop` が同一バージョン（`4.43.2,199162`）で二重に登録されて
+いた。実体は同じアプリなので、片方を `brew uninstall` すると残った側も壊れる。Brewfile を新しい
+トークンに直すだけにとどめる。
+
+### claude-code は cask で入れない
+
+Brewfile に `cask "claude-code"` があったが、実際の Claude Code は native installer が置く
+`~/.local/bin/claude` である。dotfiles の PATH 構築は `$HOME/.local/bin` を `/opt/homebrew/bin` より
+前に置くため、**cask を入れても使われない**。まっさらな Mac mini で `brew bundle` すると二重に入る。
+
+さらに cask の `zap` は `~/.claude` を trash 対象にしている。ここは `claude_config` ロールが
+リンクを張る場所なので、`brew uninstall --zap claude-code` がグローバル設定を消す。
+
+Claude Code 自身が自己更新するため、宣言的に持つ利点も小さい。当日の手順書側に手動インストール
+として置く。
+
 ## dotfiles は ghq 配下に置く
 
 `dotfiles_path` は ghq のルート配下（既定 `~/src/github.com/winky/dotfiles`）を指す。以前は
