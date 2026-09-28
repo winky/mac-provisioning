@@ -203,8 +203,14 @@ Brewfile に無いが実機に入っている cask が12個あった。取り込
 
 | 取り込む | 落とす |
 |---|---|
-| `google-japanese-ime` `session-manager-plugin` `superset` `tableplus` | `firefox` `android-studio` `wifi-explorer` — 実体が2023年から動いていない |
+| `google-japanese-ime` `session-manager-plugin` `tableplus` | `firefox` `android-studio` `wifi-explorer` — 実体が2023年から動いていない |
 | | `postico` `adobe-creative-cloud` — `/Applications` に実体が無い |
+| | `superset` — 実体は新しいが使っていない（下記） |
+
+**実体の新しさは使用中の証明にはならない。** `superset` は `/Applications/Superset.app` が
+1.12.1（2026-06）で、この調査では「使用中」に分類したが、実際にはもう使っていなかった。
+mtime で分かるのは「更新が止まっている＝使っていない」の方向だけで、その逆は言えない。
+**新しい側は本人に確認する必要がある。**
 
 方針で除外するもの。
 
