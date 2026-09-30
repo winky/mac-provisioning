@@ -41,6 +41,12 @@
     - role: dotfiles
       tags:
         - dotfiles
+    # Gated with unattended: the machine that is meant to run without anyone at it is the
+    # one that has to be reachable. A laptop reporting this would be noise.
+    - role: remote_login
+      when: enable_unattended
+      tags:
+        - remote_login
     - role: tailscale
       tags:
         - tailscale

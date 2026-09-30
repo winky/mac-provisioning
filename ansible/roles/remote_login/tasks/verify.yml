@@ -1,0 +1,39 @@
+---
+#
+# remote_login/tasks/verify.yml
+# Report when nothing is listening for SSH
+#
+# Turning Remote Login on is not automated. `systemsetup -setremotelogin on` needs root and, on
+# current macOS, Full Disk Access for whatever calls it -- and granting that is itself a trip
+# through System Settings, so automating the toggle would only move the interaction elsewhere.
+# Same side of the line as pmset and FileVault, and it does not drift once set.
+#
+# Detecting it is worth doing. Without this, an unreachable machine is discovered by sshing to
+# it and reading "Connection refused", which does not say whether Tailscale or sshd is at fault.
+# That is how it was found on the Mac mini's first setup.
+#
+# nc rather than `systemsetup -getremotelogin`, which wants root to answer. What matters is
+# whether something accepts a connection, and that can be asked without privileges.
+- name: Check whether anything is listening for SSH
+  ansible.builtin.command:
+    cmd: nc -z -w 2 localhost 22
+  register: remote_login_listening
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Notify that Remote Login is off
+  ansible.builtin.debug:
+    msg: >-
+      Nothing is listening on port 22, so this machine cannot be reached over SSH -- including
+      over Tailscale, which carries the connection but does not answer it. Turn Remote Login on
+      in System Settings > General > Sharing. It is not done here: the command for it needs
+      root and Full Disk Access, and granting that is another trip through System Settings.
+  when: remote_login_listening.rc | default(1) != 0
+
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note that Remote Login has to be turned on # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + ['Enable Remote Login in System Settings > General > Sharing'] }}"
+  when: remote_login_listening.rc | default(1) != 0
