@@ -1,0 +1,7 @@
+---
+#
+# remote_login/tasks/main.yml
+# main task for remote_login
+#
+- name: Remote Login Verify
+  ansible.builtin.import_tasks: verify.yml
