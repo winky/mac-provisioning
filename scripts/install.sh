@@ -57,14 +57,23 @@ fi
 
 make -C "${PROVISION_ROOT}" init
 
+# The shell this ran in still has the PATH it started with. init.sh appends brew shellenv to
+# .zprofile, which the next login shell reads -- but `gh` was installed a moment ago and is not
+# on the PATH here, so the first of the two steps below would fail with "command not found" if
+# it were run without saying this.
 cat <<MSG
 
-Homebrew and the Brewfile packages are in place. Two steps remain:
+Homebrew and the Brewfile packages are in place. Three steps remain:
 
-  1. gh auth login --git-protocol ssh
-     Authenticates gh and registers an SSH key for this machine.
+  1. exec zsh -l
+     Or open a new terminal. Homebrew went on the PATH through ~/.zprofile, which this
+     shell has already read past, so gh and brew are not visible here yet.
 
-  2. make -C ${PROVISION_ROOT} deploy
-     Applies the playbook, including the private claude-config repository.
+  2. gh auth login --git-protocol ssh
+     Authenticates gh and registers an SSH key for this machine. The playbook needs it to
+     reach the two private repositories.
+
+  3. make -C ${PROVISION_ROOT} deploy
+     Applies the playbook.
 
 MSG
