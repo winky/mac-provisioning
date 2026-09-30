@@ -145,3 +145,23 @@
     - unattended_filevault.stdout is search('FileVault is On')
     - unattended_authrestart.stdout is search('true')
     - "unattended_power_hardware.stdout is search('UPS Installed: Yes')"
+
+# Collected so that site.yml can print every outstanding command together at the end of the
+# run. The reports above say why each one is needed; these are just the commands.
+#
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note what unattended operation still needs # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + [item.action] }}"
+  loop:
+    - when: "{{ unattended_pmset_drift | default([]) | length > 0 }}"
+      action: >-
+        sudo pmset -a{% for key in unattended_pmset_drift | default([]) %} {{ key }} {{ unattended_pmset_settings[key] }}{% endfor %}
+    - when: "{{ not unattended_filevault.stdout is search('FileVault is On') }}"
+      action: "Turn FileVault on in System Settings > Privacy & Security"
+    - when: "{{ not unattended_power_hardware.stdout is search('UPS Installed: Yes') }}"
+      action: "Attach a UPS over USB"
+  loop_control:
+    label: "{{ item.action }}"
+  when: item.when | bool

@@ -83,3 +83,10 @@
           Reaching it from another machine would need OLLAMA_HOST widened, which is not set
           here: it would put an endpoint with no authentication on the tailnet.
       when: ollama_service_status == 'started'
+
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note that ollama is not installed yet # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + ['make init  # brew \"' ~ ollama_formula ~ '\" is missing'] }}"
+  when: not ollama_installed.stat.exists
