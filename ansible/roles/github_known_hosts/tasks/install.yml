@@ -1,0 +1,33 @@
+---
+#
+# github_known_hosts/tasks/install.yml
+# Let this machine verify github.com over SSH without anyone being asked
+#
+# claude_config and scheduled_jobs clone over SSH. On a machine that has never connected, ssh
+# stops to ask whether the host key should be trusted -- and a task running it cannot answer,
+# so both roles report the repository as unreachable and the reason is nowhere near the cause.
+# That happened on the Mac mini's first deploy.
+#
+# The keys come from GitHub's own API rather than ssh-keyscan. Keyscan trusts whatever answers
+# on port 22 the first time it asks, which is the thing host key checking exists to prevent;
+# fetching over HTTPS puts the answer behind a verified certificate instead.
+#
+# Runs before the roles that need it, and is safe to repeat: known_hosts only writes when the
+# entry is missing or different.
+- name: Fetch the SSH host keys GitHub publishes
+  ansible.builtin.uri:
+    url: https://api.github.com/meta
+    return_content: true
+  register: github_known_hosts_meta
+  changed_when: false
+  check_mode: false
+
+- name: Trust GitHub's SSH host keys
+  ansible.builtin.known_hosts:
+    name: github.com
+    key: "github.com {{ item }}"
+    state: present
+  loop: "{{ github_known_hosts_meta.json.ssh_keys | default([]) }}"
+  # The key type, not the key, so a rotation shows as a change rather than as a new line.
+  loop_control:
+    label: "{{ item.split(' ') | first }}"

@@ -35,6 +35,9 @@
       tags: always
 
   roles:
+    - role: github_known_hosts
+      tags:
+        - github_known_hosts
     - role: dotfiles
       tags:
         - dotfiles
