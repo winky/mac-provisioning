@@ -11,9 +11,18 @@
 # The keys come from GitHub's own API rather than ssh-keyscan. Keyscan trusts whatever answers
 # on port 22 the first time it asks, which is the thing host key checking exists to prevent;
 # fetching over HTTPS puts the answer behind a verified certificate instead.
-#
-# Runs before the roles that need it, and is safe to repeat: known_hosts only writes when the
-# entry is missing or different.
+- name: Check whether github.com is already known
+  ansible.builtin.command:
+    cmd: ssh-keygen -F github.com
+  register: github_known_hosts_existing
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# Only when the entry is missing. Unauthenticated calls to api.github.com are capped at 60 an
+# hour per address, and CI runners share addresses -- the first version of this role fetched on
+# every run and exhausted the quota, which failed the play. Asking only when there is something
+# to learn keeps the usual run from touching the network at all.
 - name: Fetch the SSH host keys GitHub publishes
   ansible.builtin.uri:
     url: https://api.github.com/meta
@@ -21,6 +30,10 @@
   register: github_known_hosts_meta
   changed_when: false
   check_mode: false
+  # A rate limit or an outage must not stop a deploy. Everything else this playbook does is
+  # still worth doing, and the report below says what to do about the part that did not happen.
+  failed_when: false
+  when: github_known_hosts_existing.rc | default(1) != 0
 
 - name: Trust GitHub's SSH host keys
   ansible.builtin.known_hosts:
@@ -31,3 +44,24 @@
   # The key type, not the key, so a rotation shows as a change rather than as a new line.
   loop_control:
     label: "{{ item.split(' ') | first }}"
+
+- name: Notify that GitHub's host keys could not be fetched
+  ansible.builtin.debug:
+    msg: >-
+      github.com is not in known_hosts and its host keys could not be fetched
+      ({{ github_known_hosts_meta.msg | default('no response') }}). Cloning over SSH will stop
+      to ask whether to trust the host, which a task cannot answer, so the roles that use SSH
+      will report their repositories as unreachable. Run `ssh -T git@github.com` and accept
+      once, or re-run once the rate limit resets.
+  when:
+    - github_known_hosts_existing.rc | default(1) != 0
+    - github_known_hosts_meta.json.ssh_keys | default([]) | length == 0
+
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note that github.com still has to be trusted # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + ['ssh -T git@github.com  # accept github.com so SSH clones work'] }}"
+  when:
+    - github_known_hosts_existing.rc | default(1) != 0
+    - github_known_hosts_meta.json.ssh_keys | default([]) | length == 0
