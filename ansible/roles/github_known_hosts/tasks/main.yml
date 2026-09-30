@@ -1,0 +1,7 @@
+---
+#
+# github_known_hosts/tasks/main.yml
+# main task for github_known_hosts
+#
+- name: Github Known Hosts Install
+  ansible.builtin.import_tasks: install.yml

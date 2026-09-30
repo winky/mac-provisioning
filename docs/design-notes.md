@@ -124,6 +124,22 @@ gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)" --type signing
 dotfiles が `user.signingkey = ~/.ssh/id_ed25519.pub` を指定しており、`commit.gpgsign` は無条件なので、
 **この登録を飛ばすと署名は付くが Verified にならず、鍵自体が無いマシンでは一切コミットできない。**
 
+## ホスト鍵は GitHub の API から取る
+
+`claude_config` と `scheduled_jobs` は SSH で clone する。**一度も接続したことのない機体では、ssh が
+ホスト鍵を信用してよいか尋ねて止まる。** タスクからは答えられないので、両ロールは「リポジトリに
+到達できない」と報告し、**原因からは遠い場所にメッセージが出る**。Mac mini の初回 deploy で実際に
+起きた。
+
+`github_known_hosts` ロールが先に `known_hosts` を用意する。
+
+**`ssh-keyscan` は使わない。** あれは初回にポート22で応答したものを無条件に信じる仕組みで、
+ホスト鍵確認が防ごうとしているものそのものである。GitHub は `https://api.github.com/meta` の
+`ssh_keys` でホスト鍵を公開しているので、**TLS 検証の効く経路**で取れる。
+
+`known_hosts` モジュールは既にある項目を書き換えないので、繰り返しても変更にならない。鍵が
+入れ替わったときだけ changed になる。
+
 ## macOS は Homebrew、Linux は dotfiles
 
 パッケージの入手元は次の方針で分ける。
