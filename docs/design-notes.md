@@ -525,7 +525,8 @@ private は2つある（`scheduled-jobs` は Backlog のプロジェクトキー
 1. Xcode Command Line Tools〔対話〕
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
-4. `make deploy` — dotfiles / tailscale / unattended / ollama / scheduled_jobs / macos / claude_config
+4. `make deploy` — github_known_hosts / dotfiles / tailscale / unattended / ollama /
+   scheduled_jobs / macos / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
