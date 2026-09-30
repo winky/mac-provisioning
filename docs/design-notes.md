@@ -563,8 +563,19 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 | `dotfiles` / `claude_config` / `macos` | 収束 | ホーム配下と user defaults のみ |
 | `ollama` | 収束 | ホーム配下のファイルとユーザーの LaunchAgent のみ |
 | `scheduled_jobs` | 収束 | clone と相手の `make install`。どちらもホーム配下 |
+| `github_known_hosts` | 収束 | `~/.ssh/known_hosts` のみ |
 | `tailscale` | 報告 | デーモン起動が root。ログインはブラウザでの承認 |
 | `unattended` | 報告 | `pmset` が root。FileVault は設定ウィザードの選択 |
+| `remote_login` | 報告 | `systemsetup` が root ＋ Full Disk Access |
+
+`remote_login` は境目の説明として分かりやすい。**判定は権限を要さない**（port 22 に接続できるか
+訊くだけ）が、**有効化は root に加えて呼び出し元プロセスの Full Disk Access を要する**。そして
+その許可を与える操作自体が System Settings での対話なので、**自動化しても対話が別の場所に移る
+だけ**である。
+
+このロールが生まれたのは、Mac mini が tailnet に乗っているのに SSH が通らなかったため。
+`Connection refused` は「Tailscale が運べなかった」のか「誰も応答しなかった」のかを言わない。
+**deploy の時点で言えたはずの情報**を、1時間後に ssh して初めて知った。
 
 報告に留めても実害が小さいのは、そこで見ている設定が**一度決めれば保たれる**ものだからである。
 `pmset` の値も FileVault も Tailscale のログインも、ドリフトしない。手で一度打つコストは1コマンドで、
