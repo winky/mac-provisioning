@@ -65,3 +65,15 @@
     - role: claude_config
       tags:
         - claude_config
+
+  # The roles report at the point they detect something, which is where the reason belongs --
+  # and where it is buried, because a full run is eight roles and dozens of tasks. Each role
+  # also appends the command itself to provision_actions, and this prints them together at the
+  # end, immediately above the PLAY RECAP that everyone reads.
+  #
+  # Both are kept on purpose: the report in place says why, this list says what to type.
+  post_tasks:
+    - name: What still needs a person
+      ansible.builtin.debug:
+        msg: "{{ provision_actions | default(['Nothing: everything this playbook can do is done.']) }}"
+      tags: always

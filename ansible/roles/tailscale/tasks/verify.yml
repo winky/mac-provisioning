@@ -69,3 +69,21 @@
   when:
     - tailscale_backend_state is defined
     - tailscale_backend_state == 'Running'
+
+# Collected so that site.yml can print every outstanding command together at the end of the
+# run. The reports above say why each one is needed; these are just the commands.
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note what Tailscale still needs # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + [item.action] }}"
+  loop:
+    - when: "{{ not tailscale_binary.stat.exists }}"
+      action: "make init  # {{ tailscale_package }} is missing"
+    - when: "{{ tailscale_binary.stat.exists and tailscale_status.rc | default(1) != 0 }}"
+      action: "{{ tailscale_start_hint }}"
+    - when: "{{ tailscale_backend_state is defined and tailscale_backend_state != 'Running' }}"
+      action: "{{ tailscale_login_hint }}"
+  loop_control:
+    label: "{{ item.action }}"
+  when: item.when | bool

@@ -63,3 +63,23 @@
       then re-run `make deploy`.
   when: scheduled_jobs_remote.rc | default(1) != 0
   tags: [skip_test]
+
+# Collected so that site.yml can print every outstanding command together at the end of the
+# run. The reports above say why each one is needed; these are just the commands.
+#
+# The second one reads the target's own output, the same way changed_when above does. That
+# repository knows whether it could load its credentials; this one would only be guessing.
+#
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note what the scheduled jobs still need # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + [item.action] }}"
+  loop:
+    - when: "{{ scheduled_jobs_remote.rc | default(1) != 0 }}"
+      action: "gh auth login --git-protocol ssh  # {{ scheduled_jobs_repo }} is unreachable"
+    - when: "{{ scheduled_jobs_install.stdout | default('') is search('not signed in') }}"
+      action: "op signin && make -C {{ scheduled_jobs_path }} credentials"
+  loop_control:
+    label: "{{ item.action }}"
+  when: item.when | bool
