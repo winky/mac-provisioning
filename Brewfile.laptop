@@ -9,3 +9,8 @@
 # tailscaled as a root LaunchDaemon: it is not recovering unattended. The first launch
 # asks to allow its network extension.
 cask "tailscale-app"
+
+# Kindle. The cask is gone -- Amazon moved distribution to the Mac App Store -- so it comes
+# through mas now. Laptop only: it needs an App Store session, and making `make init` on the
+# Mac mini depend on one would trade a reading app for a step that can fail during setup.
+mas "Kindle", id: 302584613
