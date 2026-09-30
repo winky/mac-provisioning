@@ -29,14 +29,14 @@ ollama_models_path: "{{ ansible_facts.env.HOME }}/.ollama/models"
 # keychain role. `service` is the keychain service name the job looks up -- that name is the
 # interface between this repository and winky/scheduled-jobs. `reference` is an op:// path.
 #
-# Empty until the 1Password references are filled in. They are not guessed: a wrong reference
-# either fails or, worse, writes the contents of one credential under another's name. Nothing
-# secret goes here -- an op:// path is a pointer, and the keychain service name is already
-# public in the job that reads it.
+# Nothing secret belongs here: an op:// path is a pointer, and the service name is already in
+# the job that reads it. References are never guessed, though -- a wrong one either fails or,
+# worse, writes the contents of one credential under another's name.
 #
-# The one known entry is the Slack webhook that refresh-repositories posts its summary to:
-#
-#   keychain_items:
-#     - service: scheduled-jobs-slack-webhook
-#       reference: op://<vault>/<item>/<field>
-keychain_items: []
+# Referenced by item UUID rather than title. A title reference broke twice while this was being
+# set up: once because a secret reference cannot carry a parenthesis, and once because the item
+# had been renamed. The UUID survives both; the comment carries the name a human needs.
+keychain_items:
+  # "Slack Incoming Webhook mac-mini-own" in the Employee vault. Where job A posts its summary.
+  - service: scheduled-jobs-slack-webhook
+    reference: op://Employee/xrkasujmpq66ifoo4as5in6noy/credential
