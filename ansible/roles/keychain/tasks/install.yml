@@ -43,14 +43,39 @@
     # no_log on every task that touches a value. The two reads are separate from the write so
     # that writing only happens when something actually differs: `security add-generic-password
     # -U` succeeds either way and would report a change on every run.
+    # Not failed_when-ed into an error, because no_log would censor the reason along with it. A
+    # bad op:// reference is the likeliest thing to go wrong here -- a renamed item, or a title
+    # containing a character references cannot carry, such as a parenthesis -- and "the task
+    # failed, output withheld" is the least useful way to say so. The names are reported below
+    # instead; the references themselves are not secret, but the values that failed to arrive
+    # would be in the same result.
     - name: Read the credentials from 1Password
       ansible.builtin.command:
         cmd: op read {{ item.reference }}
       register: keychain_from_op
       loop: "{{ keychain_items }}"
       changed_when: false
+      failed_when: false
       check_mode: false
       no_log: true
+
+    # Computed under no_log because the results carry the values; what it leaves behind is a
+    # list of service names, which is safe to print.
+    - name: Note which references could not be read
+      ansible.builtin.set_fact:
+        keychain_unresolved: >-
+          {{ keychain_from_op.results | rejectattr('rc', 'equalto', 0)
+             | map(attribute='item.service') | list }}
+      no_log: true
+
+    - name: Notify that some references could not be read
+      ansible.builtin.debug:
+        msg: >-
+          1Password could not resolve the reference for: {{ keychain_unresolved | join(', ') }}.
+          Run `op read <reference>` by hand to see why -- the reference is in
+          ansible/vars/<profile>.yml and is not secret. A reference cannot contain characters
+          such as parentheses, and it breaks if the item is renamed.
+      when: keychain_unresolved | length > 0
 
     - name: Read what the keychain already holds
       ansible.builtin.command:
@@ -76,7 +101,9 @@
         stdin: "{{ item.0.stdout }}\n{{ item.0.stdout }}\n"
         stdin_add_newline: false
       loop: "{{ keychain_from_op.results | zip(keychain_current.results) | list }}"
-      when: item.0.stdout != item.1.stdout
+      when:
+        - item.0.rc == 0
+        - item.0.stdout != item.1.stdout
       changed_when: true
       no_log: true
 
