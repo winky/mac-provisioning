@@ -297,6 +297,13 @@ deploy にパスワードが付かない。
 スキップされても、タスクレベルの `changed_when` がモジュールの `changed=false` を上書きする。
 ansible-lint の `no-changed-when` も `creates` があれば要求しない。
 
+### デスクトップアプリは cask で入れる
+
+`cask "claude"` は Claude Code ではなくデスクトップアプリ（`/Applications/Claude.app`）である。
+上で `claude-code` の cask を退けた理由は**どちらも当てはまらない**。CLI を置かないので
+`~/.local/bin/claude` と PATH を争わず、`zap` の対象も `~/Library` 配下だけで `~/.claude` に触れない。
+自己更新するのは他の cask と同じなので、機種を問わず共通の Brewfile に置く。
+
 ## 機種差はプロファイルで表現する
 
 ノートと Mac mini の違いを `host_profile`（`laptop` | `mac-mini`）1つに集約する。判定は
