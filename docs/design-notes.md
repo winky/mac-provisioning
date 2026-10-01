@@ -604,7 +604,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 | `github_known_hosts` | 収束 | `~/.ssh/known_hosts` のみ |
 | `tailscale` | 報告 | デーモン起動が root。ログインはブラウザでの承認 |
 | `unattended` | 報告 | `pmset` が root。FileVault は設定ウィザードの選択 |
-| `remote_login` | 報告 | `systemsetup` が root ＋ Full Disk Access |
+| `remote_login` | 報告 | `systemsetup` が root ＋ Full Disk Access。`/etc/ssh` も root |
 
 `remote_login` は境目の説明として分かりやすい。**判定は権限を要さない**（port 22 に接続できるか
 訊くだけ）が、**有効化は root に加えて呼び出し元プロセスの Full Disk Access を要する**。そして
@@ -621,6 +621,56 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 
 この境目を破りかけたのは `agent-user`（`dscl` でのユーザー作成は root が必要で、かつ「一度打てば
 終わり」とも言いにくい）だが、**そのロールを作らない判断をしたため試されずに済んだ**。
+
+## SSH はポートを変えるのではなくパスワードを閉じる
+
+ポート22で待つことをリスクとして指摘された。**この機体では当たらない。** ルーターがポート22を
+転送していないので、インターネットからは届かない。スキャンされて総当たりを受けるという話は、
+公開されている機体の話である。
+
+届くのは**家庭内 LAN と tailnet** で、そのどちらに対してもポート変更は効かない。/24 を全ポート
+走査するのは数秒で終わるし、tailnet に乗っている端末はそもそもポートを知っている。守りが
+増えないのに、ノート・iPad・`scheduled-jobs` の全ての接続先を書き換える手間だけが残る。
+
+**効くのはパスワード認証を閉じることである。** LAN 上の端末が1台乗っ取られたとき、鍵しか
+受け付けない sshd には試せるものが無い。
+
+```
+# /etc/ssh/sshd_config.d/200-no-password-auth.conf
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+```
+
+**2行とも必要である。** macOS が既定で上書きしているのは `UsePAM yes` / `AcceptEnv` /
+`Subsystem` の3つで、`UsePAM` が有効な限り PAM は `KbdInteractiveAuthentication` 経由で
+パスワードを受け付ける。`PasswordAuthentication no` だけでは閉じない。
+
+`sshd_config` 本体ではなく `sshd_config.d` の drop-in に置く。OS アップデートが本体を
+置き換えても残る。
+
+### ロールがするのは報告だけ
+
+`/etc/ssh` への書き込みは root なので、`remote_login` は[収束と報告の境目](#ロールは-root-の要否で収束と報告に分かれる)の
+報告側に居る。**判定は権限を要さない。** `sshd -T` は誰でも読める設定を印字するのに root を
+欲しがるが、`/etc/ssh/sshd_config` と `sshd_config.d` を `grep` で読むだけなら要らない。
+
+**鍵が1つも登録されていない機体には、パスワードを閉じろと言わない。** それは締め出しを
+勧めることになる。`~/.ssh/authorized_keys` に鍵があるときだけ報告する。
+
+### 公開鍵もリポジトリには置かない
+
+一度は `vars/mac-mini.yml` にノートの公開鍵を列挙し、`ansible.posix.authorized_key` で
+収束させる実装にした。**撤回した。**
+
+公開鍵は秘密ではない（GitHub は誰の鍵でも `github.com/<user>.keys` で配っている）。問題は別で、
+**列挙すると「この機体に誰が入れるか」を public リポジトリに公開することになる**。秘密ではなく
+アクセス方針が漏れる。誰も必要としない情報で、盗む対象の地図にはなる。
+
+代わりに、鍵を持っている機体から1回 `ssh-copy-id` する。どの機体を信用するかの判断は、
+鍵を持っている側に置くのが素直である。ロールは**その作業が済んでいるかどうかだけを見る**。
+
+> `gh auth login` が同じ鍵を GitHub に登録しているので、鍵そのものは既に公開されている。
+> それでも方針を公開する理由にはならない。
 
 ## エージェント専用ユーザーは作らない
 
