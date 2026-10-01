@@ -1,7 +1,7 @@
 ---
 #
 # remote_login/tasks/verify.yml
-# Report when nothing is listening for SSH
+# Report what still stops SSH from being safe to leave on
 #
 # Turning Remote Login on is not automated. `systemsetup -setremotelogin on` needs root and, on
 # current macOS, Full Disk Access for whatever calls it -- and granting that is itself a trip
@@ -31,9 +31,96 @@
       root and Full Disk Access, and granting that is another trip through System Settings.
   when: remote_login_listening.rc | default(1) != 0
 
+# Which keys may log in is not declared here, and no key is copied in from this repository.
+# A public key is not a secret -- GitHub serves everyone's at github.com/<user>.keys -- but
+# listing them would publish who may log into this machine, which is a map of what to steal and
+# nothing anyone needs. `ssh-copy-id` from the machine that owns the key is a better place for
+# that decision, so this only looks at whether the job has been done.
+- name: Check whether any key may log in
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.ssh/authorized_keys"
+  register: remote_login_authorized_keys_file
+
+- name: Count the keys that may log in
+  ansible.builtin.command:
+    cmd: grep -cE ^(ssh|ecdsa|sk-)- {{ ansible_facts.env.HOME }}/.ssh/authorized_keys
+  register: remote_login_key_count
+  changed_when: false
+  # grep says 1 when it counts none, which is what an empty or comment-only file looks like.
+  failed_when: false
+  check_mode: false
+  when: remote_login_authorized_keys_file.stat.exists
+
+# This machine is not exposed to the internet -- nothing forwards port 22 -- so the usual
+# argument about port 22 being scanned does not apply. What does reach it is the home LAN, where
+# any device that gets taken over can try passwords against it, and moving sshd to another port
+# would not change that: scanning a LAN takes seconds. Taking passwords away does.
+#
+# Read rather than `sshd -T`, which wants root to print a configuration anyone can read. macOS
+# leaves both settings at their default of yes and overrides only UsePAM, AcceptEnv and
+# Subsystem -- and with UsePAM, PasswordAuthentication alone is not enough, because PAM can
+# still authenticate through KbdInteractiveAuthentication.
+- name: Read the SSH authentication settings
+  ansible.builtin.command:
+    cmd: >-
+      grep -rhE ^[[:space:]]*(PasswordAuthentication|KbdInteractiveAuthentication)[[:space:]]
+      /etc/ssh/sshd_config /etc/ssh/sshd_config.d
+  register: remote_login_auth_settings
+  changed_when: false
+  # grep says 1 when it matches nothing, which is the common case: neither setting appears, so
+  # both are at their default of yes.
+  failed_when: false
+  check_mode: false
+
+# Worked out here rather than in a `when`, because a bare conditional carrying backslashes is
+# evaluated differently from the same expression inside {{ }} -- the unattended role lost an
+# afternoon to that.
+- name: Note whether passwords would still get in
+  ansible.builtin.set_fact:
+    remote_login_passwords_accepted: >-
+      {{ not (remote_login_auth_settings.stdout is search('PasswordAuthentication[ \t]+no'))
+         or not (remote_login_auth_settings.stdout is search('KbdInteractiveAuthentication[ \t]+no')) }}
+    remote_login_has_key: "{{ (remote_login_key_count.stdout | default('0') | trim | int) > 0 }}"
+
+- name: Notify that no key may log in yet
+  ansible.builtin.debug:
+    msg: >-
+      No key is authorised for this account, so the only way in over SSH is a password. Run
+      `ssh-copy-id {{ ansible_facts.user_id }}@<this machine>` from the machine that should be
+      able to reach it, and check that logging in with the key works before taking passwords
+      away.
+  when:
+    - remote_login_listening.rc | default(1) == 0
+    - not remote_login_has_key | bool
+
+# Only once a key works. Suggesting this to a machine nobody can reach by key would be
+# suggesting a lockout.
+- name: Notify that SSH still accepts passwords
+  ansible.builtin.debug:
+    msg: >-
+      sshd still accepts passwords, so anything on the LAN can try them against this machine.
+      Nothing forwards port 22, so the internet cannot; moving sshd to another port would not
+      help, because scanning a LAN takes seconds. Turning passwords off does.
+      Create /etc/ssh/sshd_config.d/200-no-password-auth.conf with
+      "PasswordAuthentication no" and "KbdInteractiveAuthentication no" -- both, because macOS
+      sets UsePAM and PAM can authenticate through the second one. Toggle Remote Login off and
+      on afterwards so sshd rereads it.
+  when:
+    - remote_login_passwords_accepted | bool
+    - remote_login_has_key | bool
+
 # noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
 # not a variable belonging to this one, so the role-prefix rule does not apply.
-- name: Note that Remote Login has to be turned on # noqa: var-naming[no-role-prefix]
+- name: Note what remote access still needs # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
-    provision_actions: "{{ provision_actions | default([]) + ['Enable Remote Login in System Settings > General > Sharing'] }}"
-  when: remote_login_listening.rc | default(1) != 0
+    provision_actions: "{{ provision_actions | default([]) + [item.action] }}"
+  loop:
+    - when: "{{ remote_login_listening.rc | default(1) != 0 }}"
+      action: "Enable Remote Login in System Settings > General > Sharing"
+    - when: "{{ remote_login_listening.rc | default(1) == 0 and not remote_login_has_key | bool }}"
+      action: "ssh-copy-id {{ ansible_facts.user_id }}@<this machine>  # then verify key login"
+    - when: "{{ remote_login_passwords_accepted | bool and remote_login_has_key | bool }}"
+      action: "Put PasswordAuthentication no and KbdInteractiveAuthentication no in /etc/ssh/sshd_config.d/200-no-password-auth.conf"
+  loop_control:
+    label: "{{ item.action }}"
+  when: item.when | bool
