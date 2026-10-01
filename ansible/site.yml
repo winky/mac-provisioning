@@ -71,9 +71,17 @@
     - role: claude_config
       tags:
         - claude_config
+    # After claude_config, not before. claude_config links ~/.claude/skills, and Claude
+    # Code creates that path as a real directory for the skills it syncs from claude.ai --
+    # `ln -sfn` cannot replace a real directory. Installing Claude Code last means that on
+    # a first run the links are already there before the binary exists, so there is no
+    # window in which it could be started too early.
+    - role: claude_code
+      tags:
+        - claude_code
 
   # The roles report at the point they detect something, which is where the reason belongs --
-  # and where it is buried, because a full run is eight roles and dozens of tasks. Each role
+  # and where it is buried, because a full run is ten roles and dozens of tasks. Each role
   # also appends the command itself to provision_actions, and this prints them together at the
   # end, immediately above the PLAY RECAP that everyone reads.
   #

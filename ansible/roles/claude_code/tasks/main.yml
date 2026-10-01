@@ -1,0 +1,7 @@
+---
+#
+# claude_code/tasks/main.yml
+# main task for claude_code
+#
+- name: Claude Code Install
+  ansible.builtin.import_tasks: install.yml

@@ -1,0 +1,96 @@
+---
+#
+# claude_code/tasks/install.yml
+# Install Claude Code itself
+#
+# `cask "claude-code"` was removed for reasons that applied to the cask, not to installing
+# Claude Code at all: it loses to $HOME/.local/bin on the PATH, and its zap trashes
+# ~/.claude, which claude_config links into. The native installer has neither problem --
+# it refuses to run under sudo and writes only under $HOME -- so it belongs on the
+# converging side of the line, and this machine exists to run Claude Code agents.
+#
+# This is the one place the playbook runs code it fetched at run time. There is no formula
+# or cask that produces a working install, so the alternative is not a safer mechanism but
+# a step in a handbook that gets skipped. The installer verifies the binary's checksum
+# before running it.
+#
+# `creates` rather than a stat and a `when`: one fewer task, and nothing can change
+# between the check and the install. Claude Code updates itself, so there is nothing to do
+# when it is already there -- re-running the installer would only re-download it.
+- name: Install Claude Code
+  ansible.builtin.shell:
+    cmd: set -o pipefail && curl -fsSL {{ claude_code_installer }} | bash
+    creates: "{{ claude_code_bin }}"
+    executable: /bin/bash
+  # No changed_when. `creates` makes the module report changed correctly by itself, and a
+  # `changed_when: true` overrides that -- including when creates did skip the command, so
+  # the run claims to have installed Claude Code every time. The first draft had one, and
+  # the output said "changed" on a machine where nothing had been downloaded.
+  # Downloads a release binary, which a CI run has no reason to do.
+  tags: [skip_test]
+
+# Existence only: no -w, so the credential is never read, printed or registered. argv
+# because the service name has a space in it.
+- name: Check whether Claude Code is authenticated
+  ansible.builtin.command:
+    argv:
+      - security
+      - find-generic-password
+      - -s
+      - "{{ claude_code_keychain_service }}"
+  register: claude_code_credentials
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Check whether the global configuration is in place
+  ansible.builtin.stat:
+    path: "{{ claude_code_config_marker }}"
+  register: claude_code_config
+
+- name: Note what Claude Code still needs
+  ansible.builtin.set_fact:
+    claude_code_needs_login: "{{ claude_code_credentials.rc | default(1) != 0 }}"
+    # A symlink means claude_config placed it. A real directory means Claude Code got
+    # there first, which is the state this role's ordering exists to avoid.
+    claude_code_config_linked: "{{ claude_code_config.stat.islnk | default(false) }}"
+
+- name: Notify that Claude Code needs a login
+  ansible.builtin.debug:
+    msg: >-
+      Claude Code is installed but not signed in. Run `claude` once and complete the
+      login in the browser it opens. Until then nothing that calls it can run, including
+      the scheduled jobs.
+  when:
+    - claude_code_needs_login | bool
+    - claude_code_config_linked | bool
+
+# Held back until claude_config has placed the links. Starting Claude Code first lets it
+# create ~/.claude/skills as a real directory for the skills it syncs from claude.ai, and
+# `ln -sfn` cannot replace a real directory -- claude_config then reports that the path
+# has to be moved aside. ~/.claude/skills.bak on the laptop is what that looks like
+# afterwards. Saying "run claude" before the configuration is in place is how it happens.
+- name: Notify that the configuration has to be placed first
+  ansible.builtin.debug:
+    msg: >-
+      Claude Code is installed but the global configuration is not in place, so do not
+      start it yet: it would create {{ claude_code_config_marker }} as a real directory
+      and claude_config could no longer link it. Run `gh auth login --git-protocol ssh`
+      and `make deploy` first, then `claude`.
+  when:
+    - claude_code_needs_login | bool
+    - not claude_code_config_linked | bool
+
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several
+# roles, not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note what Claude Code still needs from a person # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + [item.action] }}"
+  loop:
+    - when: "{{ claude_code_needs_login | bool and claude_code_config_linked | bool }}"
+      action: "claude  # sign in"
+    - when: "{{ claude_code_needs_login | bool and not claude_code_config_linked | bool }}"
+      action: "gh auth login --git-protocol ssh && make deploy  # before starting claude"
+  loop_control:
+    label: "{{ item.action }}"
+  when: item.when | bool
