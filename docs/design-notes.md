@@ -282,6 +282,16 @@ deploy にパスワードが付かない。
 「`claude` を実行せよ」と言うのが、`skills.bak` を作る経路そのものだからである。先に
 `gh auth login` と `make deploy` を促す。
 
+**`exec zsh -l` が必要なときだけ、それも出す。** `install.sh` が同じ理由で案内しているのと同じ罠で、
+本体が入った直後のシェルから `claude` を打つと `command not found` になり得る。ただし**必要な条件は
+狭い**。zsh も bash も、**PATH 上の既存ディレクトリに後から現れたバイナリを rehash なしで見つける**
+（実測）。効くのは `$HOME/.local/bin` が**そのシェルの PATH 自体に無い**場合だけで、dotfiles を同じ
+`make deploy` で適用した run がそれに当たる。
+
+判定には ansible が継いだ `ansible_facts.env.PATH` を使う。これは `make deploy` を叩いたシェルの PATH
+であり、**提示する `claude` が打たれるシェルの PATH そのもの**である。`exec zsh -l` は独立した項目として
+積む（シェルを置き換えるので `&&` で繋いだものは実行されない）。
+
 **`creates` を使うなら `changed_when` は付けない。** インストールタスクに `changed_when: true` を
 付けた最初の版は、**何もしていない機体でも毎回 changed と報告した**。`creates` でコマンドが
 スキップされても、タスクレベルの `changed_when` がモジュールの `changed=false` を上書きする。

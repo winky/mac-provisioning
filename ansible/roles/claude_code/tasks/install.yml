@@ -54,13 +54,22 @@
     # A symlink means claude_config placed it. A real directory means Claude Code got
     # there first, which is the state this role's ordering exists to avoid.
     claude_code_config_linked: "{{ claude_code_config.stat.islnk | default(false) }}"
+    # The PATH ansible inherited is the PATH of the shell that ran `make deploy`, which is
+    # the shell the suggested `claude` will be typed into. Only the directory matters: both
+    # zsh and bash find a binary that appears in a directory already on the PATH without a
+    # rehash, so a new login shell is needed when the directory itself is missing -- which
+    # is what a run that applied dotfiles in the same pass leaves behind.
+    claude_code_on_path: >-
+      {{ (claude_code_bin | dirname) in (ansible_facts.env.PATH | default('') | split(':')) }}
 
 - name: Notify that Claude Code needs a login
   ansible.builtin.debug:
     msg: >-
       Claude Code is installed but not signed in. Run `claude` once and complete the
       login in the browser it opens. Until then nothing that calls it can run, including
-      the scheduled jobs.
+      the scheduled jobs.{{ claude_code_on_path | bool | ternary('', ' Start a new login
+      shell first (exec zsh -l): ' ~ (claude_code_bin | dirname) ~ ' is not on this shell
+      PATH, so claude would be reported as not found.') }}
   when:
     - claude_code_needs_login | bool
     - claude_code_config_linked | bool
@@ -87,6 +96,11 @@
   ansible.builtin.set_fact:
     provision_actions: "{{ provision_actions | default([]) + [item.action] }}"
   loop:
+    # Its own entry rather than part of the next one: `exec zsh -l` replaces the shell, so
+    # nothing chained after it with && would ever run.
+    - when: "{{ claude_code_needs_login | bool and claude_code_config_linked | bool
+                and not claude_code_on_path | bool }}"
+      action: "exec zsh -l  # {{ claude_code_bin | dirname }} is not on this shell PATH yet"
     - when: "{{ claude_code_needs_login | bool and claude_code_config_linked | bool }}"
       action: "claude  # sign in"
     - when: "{{ claude_code_needs_login | bool and not claude_code_config_linked | bool }}"
