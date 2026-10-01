@@ -141,7 +141,7 @@ dotfiles が `user.signingkey = ~/.ssh/id_ed25519.pub` を指定しており、`
 で、CI のランナーは IP を共有する。毎回取りに行く最初の版はこれを使い切り、**play ごと落ちた**。
 `ssh-keygen -F` で先に確認すれば、通常の実行はネットワークに触れない。
 
-取得に失敗しても deploy は止めない。レート制限や障害でこの1ロールが転ぶ理由は、他の7ロールが
+取得に失敗しても deploy は止めない。レート制限や障害でこの1ロールが転ぶ理由は、他の9ロールが
 やることを諦める理由にならない。代わりに **`ssh -T git@github.com` を受け入れる**よう報告する。
 
 `known_hosts` モジュールは既にある項目を書き換えないので、繰り返しても変更にならない。鍵が
@@ -248,7 +248,7 @@ Caskroom には `docker` と `docker-desktop` が同一バージョン（`4.43.2
 いた。実体は同じアプリなので、片方を `brew uninstall` すると残った側も壊れる。Brewfile を新しい
 トークンに直すだけにとどめる。
 
-### claude-code は cask で入れない
+### claude-code は cask で入れず、native installer をロールで走らせる
 
 Brewfile に `cask "claude-code"` があったが、実際の Claude Code は native installer が置く
 `~/.local/bin/claude` である。dotfiles の PATH 構築は `$HOME/.local/bin` を `/opt/homebrew/bin` より
@@ -257,8 +257,35 @@ Brewfile に `cask "claude-code"` があったが、実際の Claude Code は na
 さらに cask の `zap` は `~/.claude` を trash 対象にしている。ここは `claude_config` ロールが
 リンクを張る場所なので、`brew uninstall --zap claude-code` がグローバル設定を消す。
 
-Claude Code 自身が自己更新するため、宣言的に持つ利点も小さい。当日の手順書側に手動インストール
-として置く。
+Claude Code 自身が自己更新するため、宣言的に**版**を持つ利点も小さい。
+
+**却下したのは cask であって、インストールそのものではない。** 当初は手順書の「後日」に手動
+インストールとして逃がしていたが、Mac mini は Claude Code エージェントを走らせるための機体なので、
+**本体が入らないのは穴**である。`claude_code` ロールが native installer を実行する。
+
+native installer は**収束側に置ける**。sudo で起動されると明示的に拒否し（`$HOME` が root の
+ホームに解決されて `claude` が自分のシェルから見えなくなるため）、`$HOME/.local/bin` と
+`$HOME/.local/share/claude`、それに `$HOME/.claude/downloads` にしか書かない。root を要さないので
+deploy にパスワードが付かない。
+
+これは **playbook が実行時に取得したコードを走らせる唯一の場所**である。動く formula も cask も
+無いので、代替は「より安全な仕組み」ではなく「手順書に書かれて飛ばされる一行」になる。
+インストーラはバイナリの checksum を検証してから実行する。
+
+**`claude_config` より後に置く。** `claude_config` は `~/.claude/skills` に symlink を張るが、
+**Claude Code は claude.ai から同期する skills のために同じパスを実ディレクトリとして作る**ため、
+先に起動されると `ln -sfn` が張れなくなる（`claude_config` が「退避させてから再実行」と報告する
+状態になる）。ノートに残っている `~/.claude/skills.bak` がその跡である。本体を最後に入れれば、
+初回は**リンクが揃ってからバイナリが現れる**ので、早すぎる起動が起きる余地がない。
+
+未認証の報告も同じ理由で `~/.claude/skills` が symlink になるまで出さない。設定が無い状態で
+「`claude` を実行せよ」と言うのが、`skills.bak` を作る経路そのものだからである。先に
+`gh auth login` と `make deploy` を促す。
+
+**`creates` を使うなら `changed_when` は付けない。** インストールタスクに `changed_when: true` を
+付けた最初の版は、**何もしていない機体でも毎回 changed と報告した**。`creates` でコマンドが
+スキップされても、タスクレベルの `changed_when` がモジュールの `changed=false` を上書きする。
+ansible-lint の `no-changed-when` も `creates` があれば要求しない。
 
 ## 機種差はプロファイルで表現する
 
@@ -561,6 +588,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 | ロール | 動作 | 根拠 |
 |---|---|---|
 | `dotfiles` / `claude_config` / `macos` | 収束 | ホーム配下と user defaults のみ |
+| `claude_code` | 収束 | native installer は sudo を拒否し `$HOME` にしか書かない |
 | `ollama` | 収束 | ホーム配下のファイルとユーザーの LaunchAgent のみ |
 | `scheduled_jobs` | 収束 | clone と相手の `make install`。どちらもホーム配下 |
 | `github_known_hosts` | 収束 | `~/.ssh/known_hosts` のみ |

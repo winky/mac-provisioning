@@ -1,0 +1,16 @@
+---
+# What the native installer puts there. dotfiles builds the PATH with
+# $HOME/.local/bin ahead of /opt/homebrew/bin, so this is the claude that runs.
+claude_code_bin: "{{ ansible_facts.env.HOME }}/.local/bin/claude"
+
+claude_code_installer: https://claude.ai/install.sh
+
+# Where `claude` keeps its OAuth credentials. Only its existence is checked -- the
+# secret is never read. An implementation detail rather than a documented interface:
+# if it is renamed, this role reports a login that is not needed, which is noise
+# rather than damage.
+claude_code_keychain_service: Claude Code-credentials
+
+# Owned by claude_config, not by this role. Read only to decide whether starting
+# Claude Code is safe yet: it is the one linked path Claude Code creates by itself.
+claude_code_config_marker: "{{ ansible_facts.env.HOME }}/.claude/skills"
