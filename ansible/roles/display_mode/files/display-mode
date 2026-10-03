@@ -1,0 +1,81 @@
+#!/bin/bash
+# display-mode: LGモニター2枚の入力をDDCでまとめて切り替える
+#   usage: display-mode {mini|dock|split|split-r|list}
+#     mini    : 両モニター → Mac mini
+#     dock    : 両モニター → CalDigit Dock（会社MBP / 私物MBP）
+#     split   : 34インチ → Mac mini、27インチ → Dock（同時作業・Mac mini主体）
+#     split-r : 34インチ → Dock、27インチ → Mac mini（同時作業・MBP主体）
+#     list    : 認識中のディスプレイ一覧
+# macOS標準の bash 3.2 で動くように書いている
+
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG="${DISPLAY_MODE_CONFIG:-$SCRIPT_DIR/config.sh}"
+# shellcheck source=config.sh
+source "$CONFIG"
+
+# Stream Deck / AppleScript 経由だと PATH が最小限なのでフォールバックを持つ
+M1DDC="${M1DDC:-$(command -v m1ddc 2>/dev/null || echo /opt/homebrew/bin/m1ddc)}"
+LOG="$HOME/Library/Logs/display-mode.log"
+mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
+
+log()    { printf '%s %s\n' "$(date '+%F %T')" "$*" >>"$LOG"; }
+notify() { osascript -e "display notification \"$1\" with title \"Display Mode\"" >/dev/null 2>&1 || true; }
+
+usage() {
+  echo "usage: $(basename "$0") {mini|dock|split|split-r|list}" >&2
+  exit 2
+}
+
+# set_input <UW|UHD> <value>
+set_input() {
+  local key=$1 val=$2
+  local id_var="${key}_ID" cmd_var="${key}_CMD"
+  local id="${!id_var}" cmd="${!cmd_var}"
+  local label="$key"
+  [ "$key" = "UW" ] && label="34インチ" || label="27インチ"
+
+  # 入力が他機器に移るとmacOSからディスプレイが消える場合がある → 事前に存在確認
+  if ! "$M1DDC" display list 2>/dev/null | grep -q "$id"; then
+    log "MISSING $key ($id)"
+    return 1
+  fi
+
+  local i
+  for i in 1 2 3; do
+    if "$M1DDC" display "$id" set "$cmd" "$val" >/dev/null 2>&1; then
+      log "OK $key $cmd=$val"
+      return 0
+    fi
+    sleep 0.5
+  done
+  log "NG $key $cmd=$val"
+  return 1
+}
+
+[ -x "$M1DDC" ] || { notify "m1ddc が見つかりません"; echo "m1ddc not found" >&2; exit 1; }
+
+case "${1:-}" in
+  mini)  plan="UW:$UW_MINI UHD:$UHD_MINI" ;;
+  dock)  plan="UW:$UW_DOCK UHD:$UHD_DOCK" ;;
+  split) plan="UW:$UW_MINI UHD:$UHD_DOCK" ;;
+  split-r) plan="UW:$UW_DOCK UHD:$UHD_MINI" ;;
+  list)  exec "$M1DDC" display list ;;
+  *)     usage ;;
+esac
+
+failed=""
+for step in $plan; do
+  key="${step%%:*}"
+  val="${step#*:}"
+  if ! set_input "$key" "$val"; then
+    [ "$key" = "UW" ] && failed="$failed 34インチ" || failed="$failed 27インチ"
+  fi
+done
+
+if [ -n "$failed" ]; then
+  notify "切り替え失敗:${failed}（モニター背面のボタンで切り替えてください）"
+  exit 1
+fi
+log "MODE $1 done"

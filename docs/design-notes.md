@@ -877,6 +877,87 @@ formula の service 定義に `require_root` が無いので、`brew services st
 認証なしのエンドポイントを置く判断になるため、必要になった時点で改めて決める。ロールは現在の
 待ち受けを報告に含めて、この判断が忘れられないようにしている。
 
+## ディスプレイ入力の切り替えは Mac mini から打つ
+
+LG モニター2枚（34WQ60C-B / 27US500-W）はどちらも HDMI 1 に Mac mini、DP に CalDigit Dock
+（会社MBP・私物MBP）が繋がっている。入力の切り替えを DDC で行い、`display_mode` ロールが
+そのスクリプトを配置する。モードは `mini` / `dock` / `split`（34=mini, 27=dock）/
+`split-r`（34=dock, 27=mini）の4つ。
+
+**DDC を打つのは Mac mini 側である。** モニターを使う3台のうち会社MBPにはソフトを入れられず、
+私物MBPも常時繋がっているわけではない。常時稼働していて、かつ自由にソフトを入れられる機体は
+Mac mini だけなので、「どの機体で作業していても Mac mini が切り替える」という形になる。
+
+### Stream Deck からは .app ラッパー経由で呼ぶ
+
+`build-apps.sh` が `osacompile` で4つの .app を作り、Stream Deck の「システム > 開く」から呼ぶ。
+Stream Deck のプラグインを書くことも、ボタンにシェルコマンドを直接書くこともできるが、採らない。
+
+- プラグインは配布と更新の手間が増える。やることは `m1ddc` を2回叩くだけである
+- ボタンからシェルを直接呼ぶとターミナルが開く。`LSUIElement` を立てた .app なら何も出ない
+
+代わりに制約が1つ付く。**`do shell script` の PATH は最小限**なので、`m1ddc` が
+`/opt/homebrew/bin` にあっても見つからない。そのため `display-mode` は `command -v m1ddc` に
+失敗したら `/opt/homebrew/bin/m1ddc` にフォールバックする。同じ理由で、切り替えの結果は
+標準出力ではなく `~/Library/Logs/display-mode.log` と通知に出す — ラッパーには表示する窓が無い。
+
+### UUID と入力値は vars/mac-mini.yml に置く
+
+`enable_display_mode` 以外にもう1つ、`display_mode_*_id` などの機種固有値が
+`ansible/vars/mac-mini.yml` にある。ロールの `defaults/` には置かない。
+
+これは [enable_* を group_vars で既定値にしない](#enable_-を-group_vars-で既定値にしない) と
+`ollama_models_path` と同じ理由である。**これらが記述しているのは「機種」ではなく「この2枚の
+パネル」**であり、既定値を置けば、モニターを1枚も持たないプロファイルがそれを読むことになる。
+ノート側は `enable_display_mode: false` なのでロールに到達せず、変数を持つ理由もない。
+
+UUID は `m1ddc display list` が返す値で、パネルを識別するだけで認証には使えない。秘密情報では
+ないのでリポジトリに置く。インデックス（`[1]` `[2]`）は接続順で変わるため使わない。
+
+### 残りは人がやる。判定できるのは UUID だけである
+
+ロールが配置できるのはスクリプトと `config.sh` までで、次は自動化できない。
+
+1. モニター OSD の「自動入力切替」をオフにする（DDC で切り替えた直後に勝手に戻る）
+2. `discover.sh list` で UUID を読み、`vars/mac-mini.yml` に書く
+3. `discover.sh probe` で入力値を実機確認する
+4. .app を Stream Deck のボタンに割り当て、初回実行時の通知許可を出す
+
+このうち playbook が状態として確認できるのは **UUID がプレースホルダ（`REPLACE_WITH_`）のままか
+どうかだけ**である。そこで UUID を「人の手による作業が済んでいないこと」の代理指標として使い、
+プレースホルダの間だけ上の4点を報告して `provision_actions` に積む。
+
+**この代理指標は Stream Deck の割り当てを見ていない。** UUID を書いた後に .app の割り当てだけが
+残っていても、ロールは何も言わない。`remote_login` が
+[鍵の有無だけを見る](#ロールがするのは報告だけ)のと同じ種類の割り切りである。Stream Deck の
+設定（`~/Library/Application Support` 配下の独自形式）を読みに行くより、見ていないと書いて
+おく方が正直で、壊れにくい。
+
+### 既知のリスク: 入力を移すと戻せないことがある
+
+**入力を他機器に移した時点で macOS がそのモニターを切断扱いにすることがある。** そうなると
+そのディスプレイは DDC コマンドを受け付けないので、**Mac mini から `mini` に戻せない**。
+`display-mode` が切り替え前に `m1ddc display list` で存在を確認し、無ければ `MISSING` を
+記録して通知を出すのはこのためである（送っても届かないコマンドを3回再送しない）。
+
+これが起きるかどうかは実機でしか分からない。`discover.sh probe` が away 値に切り替えた後で
+一覧を取り直すのは、まさにこの1点を確かめるためである。**もう一方のモニターを Mac mini に
+表示したまま1枚ずつ試す**のは、戻せなかった場合に操作する画面を残しておくためである。
+
+戻せなかった場合の対処は、`betterdisplay` を Brewfile.mac-mini に入れている理由でもある。
+
+1. BetterDisplay で該当ディスプレイの接続維持系オプションを試す
+2. Mac mini → モニターの接続を HDMI から DP（USB-C→DP）に変える
+3. `mini` への復帰だけはモニター背面のジョイスティックで行う運用にする
+
+3 まで落ちても `dock` / `split` 方向の切り替えは価値が残る。**切り替えの往路が自動化できれば、
+復路が手動でも手数は半分になる。**
+
+### PBP は対象外
+
+34WQ60C-B の PBP（左右分割表示）は **LG 独自機能で、標準的な DDC コマンドでは制御できない**。
+`display_mode` は入力切替だけを扱う。PBP はモニターの OSD か LG の OnScreen Control から操作する。
+
 ## ジョブはこのリポジトリが持たない
 
 スケジュール実行するジョブは [winky/scheduled-jobs](https://github.com/winky/scheduled-jobs) が

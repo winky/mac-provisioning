@@ -1,0 +1,7 @@
+---
+#
+# display_mode/tasks/main.yml
+# main task for display_mode
+#
+- name: Display Mode Install
+  ansible.builtin.import_tasks: install.yml
