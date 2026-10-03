@@ -65,9 +65,9 @@ Brewfile.mac-mini        Mac mini 固有
 scripts/install.sh       新しい Mac で最初に実行する
 scripts/init.sh          Homebrew と Brewfile
 scripts/host-profile.sh  機種から laptop / mac-mini を判定する
-ansible/site.yml         9ロール（github_known_hosts / dotfiles / remote_login /
-                         tailscale / unattended / ollama / scheduled_jobs / macos /
-                         claude_config）
+ansible/site.yml         11ロール（github_known_hosts / dotfiles / remote_login /
+                         tailscale / unattended / ollama / display_mode /
+                         scheduled_jobs / macos / claude_config / claude_code）
 ansible/group_vars/      両プロファイル共通の変数
 ansible/vars/            プロファイルごとの変数
 ```
@@ -99,5 +99,7 @@ cd ansible && ansible-playbook site.yml --tags macos
 | `gh` の認証（`gh auth login --git-protocol ssh`） | 対話が必須。認証と同時に SSH 鍵の生成・登録も行う。private な `claude-config` の取得もこれに依存する |
 | Claude Code の導入 | native installer（`~/.local/bin/claude`）を使う。cask は PATH で負けるうえ、`zap` が `~/.claude` を消す。[docs/design-notes.md](docs/design-notes.md) を参照 |
 | 入力ソース（キーボード / 日本語入力） | macOS が辞書の配列で保存しており `osx_defaults` では表現できないため。[docs/design-notes.md](docs/design-notes.md) を参照 |
+| ディスプレイの UUID と入力値の確定 | `discover.sh` で実機から読む必要がある。入力を他機器に移すと戻せない可能性があり、その確認も実機でしかできない。`display_mode` ロールが未確定なら報告する |
+| モニター OSD の「自動入力切替」オフ、Stream Deck のボタン割り当て | モニター本体の操作と GUI 設定。[docs/design-notes.md](docs/design-notes.md) を参照 |
 
 設計上の制約と、その判断の理由は [docs/design-notes.md](docs/design-notes.md) に残している。

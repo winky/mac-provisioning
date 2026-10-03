@@ -1,0 +1,127 @@
+---
+#
+# display_mode/tasks/install.yml
+# Place the DDC input switching scripts and their Stream Deck wrappers
+#
+# Converges rather than reports, like ollama: everything it writes is under $HOME and none
+# of it needs root, so `make deploy` stays runnable without a password.
+#
+# m1ddc comes from Brewfile.mac-mini. This role does not install it -- packages belong to
+# the Brewfile -- so it reports and stops when the binary is not there yet. That is also
+# what keeps CI green: the Brewfile is never applied there, so the mac-mini profile reaches
+# this role with no m1ddc and has to do nothing rather than fail.
+- name: Check whether m1ddc is installed
+  ansible.builtin.stat:
+    path: "{{ display_mode_binary }}"
+  register: display_mode_installed
+
+- name: Notify that m1ddc is not installed
+  ansible.builtin.debug:
+    msg: >-
+      {{ display_mode_binary }} is missing. Run `make init` to apply the Brewfile, which
+      has brew "{{ display_mode_formula }}" for this profile.
+  when: not display_mode_installed.stat.exists
+
+# Computed outside the block below so that it is defined whichever way that goes, and
+# because it depends only on ansible/vars/mac-mini.yml -- not on anything on this machine.
+- name: Note whether the display identifiers have been filled in
+  ansible.builtin.set_fact:
+    display_mode_ids_pending: >-
+      {{ [display_mode_uw_id, display_mode_uhd_id]
+         | select('match', display_mode_placeholder) | list | length > 0 }}
+
+- name: Set up the display modes
+  when: display_mode_installed.stat.exists
+  block:
+    - name: Ensure the display-mode directory exists
+      ansible.builtin.file:
+        path: "{{ display_mode_install_path }}"
+        state: directory
+        mode: "0755"
+
+    # 0755 because the .app wrappers execute display-mode directly, and build-apps.sh is
+    # run by the handler. Copied rather than symlinked out of the repository: the wrappers
+    # hold an absolute path, and a clone that moves would leave four app bundles pointing
+    # at nothing.
+    - name: Place the display-mode scripts
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ display_mode_install_path }}/{{ item }}"
+        mode: "0755"
+      loop: "{{ display_mode_scripts }}"
+      notify: Rebuild the display mode apps
+
+    # display-mode sources config.sh from its own directory, so the per-machine values
+    # arrive as a file beside the script rather than as environment that each .app would
+    # have to carry.
+    #
+    # Strictly, a wrapper holds only the path to display-mode, so a changed configuration
+    # does not change the bundles. It notifies the handler anyway: one rule -- the wrappers
+    # are rebuilt whenever this directory changes -- is cheaper to keep true than a rule
+    # about which kind of change needs them, and the cost is one osacompile run.
+    - name: Place the display-mode configuration
+      ansible.builtin.template:
+        src: config.sh.j2
+        dest: "{{ display_mode_install_path }}/config.sh"
+        mode: "0644"
+      notify: Rebuild the display mode apps
+
+    # The monitors cannot be asked any of this: m1ddc addresses a panel by a UUID that has
+    # to be read off the machine first, and whether an input that was moved away can be
+    # moved back is exactly what discover.sh exists to find out. So the role stops at
+    # placing the scripts and hands over the steps that need a person in front of the
+    # screens -- in the order they have to happen in.
+    - name: Notify what the display modes still need from a person
+      ansible.builtin.debug:
+        msg:
+          - >-
+            The scripts are in {{ display_mode_install_path }}, but the display UUIDs in
+            ansible/vars/mac-mini.yml are still placeholders, so display-mode cannot find
+            either monitor yet. What is left needs a person at the machine:
+          - >-
+            1. Turn off auto input switch in both monitors' OSD, or an input switched over
+            DDC comes straight back.
+          - >-
+            2. Read the UUIDs with `{{ display_mode_install_path }}/discover.sh list` and
+            write them into ansible/vars/mac-mini.yml.
+          - >-
+            3. Confirm the input values with `discover.sh probe`, one monitor at a time and
+            with the other one left on the Mac mini so there is a way back. It also answers
+            the question that decides whether this works at all: whether macOS still sees a
+            monitor whose input has moved to the dock. If it does not, the fallback is in
+            the handoff notes -- BetterDisplay, or DP instead of HDMI.
+          - >-
+            4. Re-run `make deploy`, then assign the four app bundles in
+            {{ display_mode_app_dir }} to Stream Deck buttons through "System > Open", and
+            allow the notification the first one asks for.
+      when: display_mode_ids_pending | bool
+
+    - name: Report the display modes
+      ansible.builtin.debug:
+        msg: >-
+          display-mode is in {{ display_mode_install_path }} with its Stream Deck wrappers
+          in {{ display_mode_app_dir }}: mini and dock move both monitors together, split
+          puts the 34" on the Mac mini and the 27" on the dock, split-r the other way
+          round. Every switch is logged to ~/Library/Logs/display-mode.log, which is the
+          only record of a failed one -- the wrappers have no window to print to.
+      when: not display_mode_ids_pending | bool
+
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+#
+# Everything here is gated on the UUIDs still being placeholders, which is the one piece of
+# state that can be checked. A machine whose monitors are already switching adds nothing to
+# the end-of-run list -- see docs/design-notes.md for what that proxy cannot see.
+- name: Note what the display modes still need # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + [item.action] }}"
+  loop:
+    - when: "{{ not display_mode_installed.stat.exists }}"
+      action: 'make init  # brew "{{ display_mode_formula }}" is missing'
+    - when: "{{ display_mode_installed.stat.exists and display_mode_ids_pending | bool }}"
+      action: "{{ display_mode_install_path }}/discover.sh list  # write the UUIDs into ansible/vars/mac-mini.yml"
+    - when: "{{ display_mode_installed.stat.exists and display_mode_ids_pending | bool }}"
+      action: "{{ display_mode_install_path }}/discover.sh probe <UUID> input 15 17  # confirm the input values, and that mini can be restored"
+  loop_control:
+    label: "{{ item.action }}"
+  when: item.when | bool

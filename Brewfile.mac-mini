@@ -15,3 +15,20 @@ brew "ollama"
 # /var/lib/tailscale and never touches the login keychain, so it stays inside the rule that
 # LaunchDaemons hold no secrets.
 brew "tailscale"
+
+# DDC control for the two LG monitors, so their input is switched from this machine rather
+# than from the joystick on the back of each one. It has to be this machine: the other two
+# that use the monitors are a company MacBook, which cannot have software installed on it,
+# and a personal one -- and the Mac mini is the one that is always on. The display_mode
+# role places the scripts that drive it.
+brew "m1ddc"
+
+# Keeps macOS from dropping a display while its input is pointed at another machine. That
+# is the one failure the display_mode role cannot recover from: a monitor macOS no longer
+# sees takes no DDC command, so there is no way back to the Mac mini except the joystick.
+cask "betterdisplay"
+
+# The buttons the display modes are actually used from. The .app wrappers that
+# build-apps.sh produces are assigned to them with the "System > Open" action, which is why
+# no Stream Deck plugin is needed.
+cask "elgato-stream-deck"

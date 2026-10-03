@@ -4,7 +4,8 @@
 # The development and verification machine.
 #
 # Every switch is off: the unattended-operation and agent-hosting roles belong to the Mac
-# mini. The laptop has no machine-specific packages of its own right now.
+# mini, and so do the two monitors the display modes switch. The laptop has no
+# machine-specific packages of its own right now.
 #
 # The switches are defined here rather than defaulted in group_vars/all.yml so that
 # leaving one out is an undefined-variable error rather than a silently disabled role.
@@ -13,6 +14,7 @@
 enable_unattended: false
 enable_ollama: false
 enable_scheduled_jobs: false
+enable_display_mode: false
 
 # Tailscale comes from the GUI app here (cask "tailscale-app"). The app build ships its
 # CLI inside the bundle; there is no /opt/homebrew/bin/tailscale on this profile.

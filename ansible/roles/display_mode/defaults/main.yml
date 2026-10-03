@@ -1,0 +1,33 @@
+---
+#
+# display_mode/defaults/main.yml
+#
+# Machine-independent values only. The display UUIDs and the input values they take are
+# deliberately not here: they describe the two monitors wired to one machine, and a default
+# would be read by a profile that drives neither of them. They live in
+# ansible/vars/mac-mini.yml, which is also where they are edited once `discover.sh` has
+# confirmed them -- see docs/design-notes.md.
+display_mode_formula: m1ddc
+display_mode_binary: /opt/homebrew/bin/m1ddc
+
+# Under ~/.local/share rather than ~/.local/bin: these are not meant to be typed, they are
+# called by the .app wrappers. dotfiles owns what is on the PATH, and nothing here should
+# shadow a name there. display-mode reads config.sh from its own directory, so the three
+# scripts and the generated configuration have to end up in the same place.
+display_mode_install_path: "{{ ansible_facts.env.HOME }}/.local/share/display-mode"
+
+# build-apps.sh defaults to this same path. It is named here, and passed to the script, so
+# that the directory has one owner and the reports can point at it.
+display_mode_app_dir: "{{ ansible_facts.env.HOME }}/Applications/Display Modes"
+
+# Copied verbatim from the working set in files/. One list rather than three tasks, so that
+# the handler that rebuilds the wrappers is notified from one place.
+display_mode_scripts:
+  - display-mode
+  - discover.sh
+  - build-apps.sh
+
+# A UUID that still begins with this has not been read off the machine yet. It is the only
+# piece of this role's state the playbook can actually check, which is why it also stands in
+# for "the hands-on pass has not happened" -- see docs/design-notes.md for what that misses.
+display_mode_placeholder: REPLACE_WITH_

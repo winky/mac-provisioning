@@ -61,6 +61,12 @@
       when: enable_ollama
       tags:
         - ollama
+    # Gated with enable_display_mode: the two monitors are wired to the Mac mini, so it is
+    # the only machine that can reach them over DDC. A laptop has nothing to switch.
+    - role: display_mode
+      when: enable_display_mode
+      tags:
+        - display_mode
     - role: scheduled_jobs
       when: enable_scheduled_jobs
       tags:

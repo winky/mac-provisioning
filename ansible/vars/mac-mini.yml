@@ -11,6 +11,7 @@
 enable_unattended: true
 enable_ollama: true
 enable_scheduled_jobs: true
+enable_display_mode: true
 
 # Tailscale comes from the formula here (brew "tailscale"), so the CLI is on PATH and
 # tailscaled is a root LaunchDaemon started through brew services.
@@ -24,3 +25,28 @@ tailscale_login_hint: "Run `{{ tailscale_bin }} up` and approve the URL it print
 # change it here and nothing else. Only defined for this profile: the ollama role is gated on
 # enable_ollama, so the laptop never reads it.
 ollama_models_path: "{{ ansible_facts.env.HOME }}/.ollama/models"
+
+# The two LG monitors wired to this machine, and the DDC values that move each of them
+# between the Mac mini (HDMI 1) and the CalDigit dock (DP, for the two MacBooks). Only
+# defined for this profile: the display_mode role is gated on enable_display_mode, so the
+# laptop never reads them -- and the values describe these panels, not a machine type.
+#
+# uw is the 34WQ60C-B in front, uhd the 27US500-W to the side. The UUIDs come from
+# `discover.sh list`; they identify a panel rather than an account, so they are not secret
+# and belong in the repository.
+display_mode_uw_id: REPLACE_WITH_34WQ60C_UUID
+display_mode_uhd_id: REPLACE_WITH_27US500_UUID
+
+# "input" is the standard MCCS input source (VCP 0x60). Switch a monitor to "input-alt" --
+# LG's own command -- if it does not answer the standard one.
+display_mode_uw_cmd: input
+display_mode_uhd_cmd: input
+
+# Provisional: the standard MCCS numbers (DP1=15 / HDMI1=17 / HDMI2=18; LG's input-alt uses
+# DP=208 / HDMI1=144 / HDMI2=145). `discover.sh probe` has to confirm them on the actual
+# panels before they can be trusted, which is the same run that answers whether an input
+# moved to the dock can be moved back over DDC at all.
+display_mode_uw_mini: 17
+display_mode_uw_dock: 15
+display_mode_uhd_mini: 17
+display_mode_uhd_dock: 15

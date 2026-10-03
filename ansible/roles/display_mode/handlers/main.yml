@@ -1,0 +1,17 @@
+---
+#
+# display_mode/handlers/main.yml
+#
+# osacompile rewrites the whole bundle, so rebuilding is only worth doing when something it
+# wraps has changed. It has to be a handler rather than a task for the second run to report
+# changed=0, which CI asserts.
+#
+# Not check-mode capable on purpose, like the command tasks in the other roles: `--check`
+# shows the scripts and the configuration that would change, and stops short of writing
+# four app bundles.
+- name: Rebuild the display mode apps
+  ansible.builtin.command:
+    cmd: "{{ display_mode_install_path }}/build-apps.sh"
+  environment:
+    APP_DIR: "{{ display_mode_app_dir }}"
+  changed_when: true
