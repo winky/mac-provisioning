@@ -64,9 +64,10 @@
       loop_control:
         label: "{{ item[0] }} {{ item[1] }}"
 
-    # ASDF and BINDIR are passed because make does not run under a login shell here, so
-    # neither HOME-relative default can be trusted to match what this role checked. Not run
-    # in check mode, which is what --check should mean.
+    # The dotfiles' own defaults would land in the same places (HOME is inherited here).
+    # BINDIR, ASDF and ASDF_DATA_DIR are passed so that what this role checked and where make
+    # installs stay the same path when the variables are overridden, as the tests do with a
+    # temporary directory. Not run in check mode, which is what --check should mean.
     - name: Install asdf and the missing runtimes
       ansible.builtin.command:
         cmd: >-

@@ -251,7 +251,11 @@ gh / ghq / fzf を将来移す受け皿にもなる。
 - `~/.local/bin/asdf --version` にその版が出ないか、`~/.asdf/installs/<name>/<version>` が
   1つでも欠けていれば `make runtimes BINDIR=... ASDF=...` を呼ぶ（`runtimes` は `tools` に依存）。
   asdf の版を dotfiles で上げても deploy で反映される
-- 絶対パスを渡すのは、ansible から呼ぶ make はログインシェルを通らないから
+- `~/.local/bin` と `~/.asdf` は dotfiles の `BINDIR` と asdf の `ASDF_DATA_DIR` の既定値の写しを
+  ロールの変数として持つ。確認する場所を知るために要る。make にも `BINDIR` / `ASDF` /
+  `ASDF_DATA_DIR` として渡し、変数を上書きしたとき（テストで一時ディレクトリにするなど）に
+  確認する場所とインストールする場所がずれないようにする。既定値のままなら、渡さなくても同じ
+  場所になる（ansible の command にも `HOME` は引き継がれる）
 - dotfiles が無いとき（CI は clone しない、`skip_test`）は何もしない。インストールの経路は
   dotfiles 側の make ターゲットと実機で確かめる
 
