@@ -1,29 +1,16 @@
 ---
 #
 # asdf_runtimes/tasks/install.yml
-# Install the asdf runtimes the dotfiles pin, by calling their make target
+# Install asdf and the runtimes the dotfiles pin, by calling their make target
 #
-# The dotfiles own the list (.tool-versions, linked to ~/.tool-versions) and the steps
-# (`make runtimes`), so a machine that is not a Mac gets the same runtimes from the same
-# place. This role only reads the list to decide whether the target needs running -- the
-# same split as the dotfiles and claude_config roles.
+# The dotfiles own both lists -- asdf_version in their Makefile, the runtimes in
+# .tool-versions -- and the steps (`make runtimes`, which runs `make tools` first), so a
+# machine that is not a Mac gets the same asdf and runtimes from the same place. This role
+# only reads the lists to decide whether the target needs running: the same split as the
+# dotfiles and claude_config roles.
 #
-# Converges rather than reports: everything lands under ~/.asdf, so `make deploy` stays
-# runnable without a password.
-#
-# asdf itself comes from the Brewfile. This role does not install it -- packages belong to the
-# Brewfile -- so it reports and stops if the binary is not there yet, the same as ollama.
-- name: Check whether asdf is installed
-  ansible.builtin.stat:
-    path: "{{ asdf_runtimes_binary }}"
-  register: asdf_runtimes_installed
-
-- name: Notify that asdf is not installed
-  ansible.builtin.debug:
-    msg: >-
-      {{ asdf_runtimes_binary }} is missing. Run `make init` to apply the Brewfile, which has
-      brew "asdf".
-  when: not asdf_runtimes_installed.stat.exists
+# Converges rather than reports: everything lands under ~/.local/bin and ~/.asdf, so
+# `make deploy` stays runnable without a password.
 
 # Absent in CI, which does not clone the dotfiles, and on a first run where the clone failed.
 # The dotfiles role reports that case; there is nothing to add here.
@@ -32,22 +19,38 @@
     path: "{{ asdf_runtimes_dotfiles_path }}/.tool-versions"
   register: asdf_runtimes_tool_versions
 
-- name: Install the pinned runtimes
-  when:
-    - asdf_runtimes_installed.stat.exists
-    - asdf_runtimes_tool_versions.stat.exists
+- name: Install asdf and the pinned runtimes
+  when: asdf_runtimes_tool_versions.stat.exists
   block:
+    - name: Read the pinned asdf version
+      ansible.builtin.slurp:
+        src: "{{ asdf_runtimes_dotfiles_path }}/Makefile"
+      register: asdf_runtimes_makefile
+
     - name: Read the pinned runtimes
       ansible.builtin.slurp:
         src: "{{ asdf_runtimes_dotfiles_path }}/.tool-versions"
       register: asdf_runtimes_tool_versions_file
 
     # "<name> <version>" per line; comments and blank lines are skipped, as asdf skips them.
-    - name: Note the pinned runtimes
+    - name: Note what the dotfiles pin
       ansible.builtin.set_fact:
+        asdf_runtimes_asdf_version: >-
+          {{ asdf_runtimes_makefile.content | b64decode
+             | regex_search('^asdf_version\s*:=\s*(\S+)', '\1', multiline=True) | first }}
         asdf_runtimes_pinned: >-
           {{ (asdf_runtimes_tool_versions_file.content | b64decode).splitlines()
              | reject('match', '^\s*(#|$)') | map('split') | list }}
+
+    # Read-only, so it runs in check mode too. rc is not checked: a missing binary is one of
+    # the answers.
+    - name: Read the installed asdf version
+      ansible.builtin.command:
+        cmd: "{{ asdf_runtimes_binary }} --version"
+      register: asdf_runtimes_installed_version
+      changed_when: false
+      failed_when: false
+      check_mode: false
 
     # The installs directory is what asdf itself checks, and it implies the plugin.
     - name: Check which pinned versions are installed
@@ -58,20 +61,17 @@
       loop_control:
         label: "{{ item[0] }} {{ item[1] }}"
 
-    # ASDF is passed because make does not run under a login shell here, so asdf may not be
-    # on PATH. Not run in check mode, which is what --check should mean.
-    - name: Install the missing runtimes
+    # ASDF and BINDIR are passed because make does not run under a login shell here, so
+    # neither HOME-relative default can be trusted to match what this role checked. Not run
+    # in check mode, which is what --check should mean.
+    - name: Install asdf and the missing runtimes
       ansible.builtin.command:
-        cmd: make runtimes ASDF={{ asdf_runtimes_binary }}
+        cmd: >-
+          make runtimes BINDIR={{ asdf_runtimes_binary | dirname }} ASDF={{ asdf_runtimes_binary }}
         chdir: "{{ asdf_runtimes_dotfiles_path }}"
       environment:
         ASDF_DATA_DIR: "{{ asdf_runtimes_data_dir }}"
       changed_when: true
-      when: asdf_runtimes_installs.results | rejectattr('stat.exists') | list | length > 0
-
-# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
-# not a variable belonging to this one, so the role-prefix rule does not apply.
-- name: Note that asdf is not installed yet # noqa: var-naming[no-role-prefix]
-  ansible.builtin.set_fact:
-    provision_actions: "{{ provision_actions | default([]) + ['make init  # brew \"asdf\" is missing'] }}"
-  when: not asdf_runtimes_installed.stat.exists
+      when: >-
+        asdf_runtimes_asdf_version not in asdf_runtimes_installed_version.stdout
+        or asdf_runtimes_installs.results | rejectattr('stat.exists') | list | length > 0

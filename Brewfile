@@ -1,4 +1,3 @@
-brew "asdf"
 brew "awscli"
 brew "coreutils"
 brew "ffmpeg"

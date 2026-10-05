@@ -2,9 +2,10 @@
 #
 # asdf_runtimes/defaults/main.yml
 #
-# asdf itself comes from the Brewfile, and which runtimes at which versions comes from the
-# dotfiles' .tool-versions. This role only decides whether `make runtimes` needs running.
-asdf_runtimes_binary: /opt/homebrew/bin/asdf
+# The dotfiles own asdf itself (`make tools`, pinned in their Makefile, into ~/.local/bin)
+# and the runtimes (`make runtimes`, pinned in .tool-versions). This role only decides
+# whether `make runtimes` -- which runs `make tools` first -- needs running.
+asdf_runtimes_binary: "{{ ansible_facts.env.HOME }}/.local/bin/asdf"
 asdf_runtimes_data_dir: "{{ ansible_facts.env.HOME }}/.asdf"
 
 # Resolved the same way the dotfiles role resolves it, rather than borrowing that role's

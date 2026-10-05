@@ -176,6 +176,9 @@ plist で PATH を指定するか絶対パスで呼ぶ必要があるが、そ�
 
 ### fzf と asdf も Homebrew から入れる
 
+> **asdf はその後 dotfiles の `make tools` に移した**（下の「言語ランタイムは dotfiles が持ち、
+> ロールは make ターゲットを呼ぶ」を参照）。この節の asdf の記述は経緯として残している。
+
 ghq と同じ理由である。zinit はこの2つの本体も ghq ルートの内側に置いていた。
 
 `~/development` → `~/src` の移行で、asdf の shims が実際に全滅した。
@@ -214,9 +217,9 @@ asdf の宣言に残っていた `bpick'*darwin-arm64*'` 決め打ち（ghq / gh
 
 ### 言語ランタイムは dotfiles が持ち、ロールは make ターゲットを呼ぶ
 
-Brewfile が入れるのは asdf 本体だけで、プラグインもバージョンも入らない。新しい Mac では
-`npx` が無く、`claude-config` の `mcp-servers.json` にある stdio の MCP サーバー（`npx -y ...`
-で起動する）が `Executable not found in $PATH: "npx"` で落ちた。
+新しい Mac では `npx` が無く、`claude-config` の `mcp-servers.json` にある stdio の MCP サーバー
+（`npx -y ...` で起動する）が `Executable not found in $PATH: "npx"` で落ちた。Brewfile は asdf
+本体しか入れておらず、プラグインもバージョンもどこにも無かった。
 
 `brew "node"` にしなかったのは、言語ランタイムは asdf で持つ方針だからである（Java も同じ扱い）。
 Homebrew の node は `brew upgrade` でメジャーバージョンごと上がる。
@@ -225,23 +228,40 @@ asdf まわりの分担はこうなる。
 
 | 持ち主 | 持っているもの |
 |---|---|
-| Brewfile | asdf 本体 |
-| dotfiles | shims を PATH に置く1行、`.asdfrc`、**`.tool-versions`（何をどの版で）と `make runtimes`（入れ方）** |
+| dotfiles | **asdf 本体**（`make tools`、`Makefile` の `asdf_version` で固定、`~/.local/bin` へ）、**ランタイム**（`make runtimes`、`.tool-versions` で固定）、shims を PATH に置く1行、`.asdfrc` |
 | `asdf_runtimes` ロール | `make runtimes` を呼ぶべきかどうかの判定だけ |
+| Brewfile | なし（`brew "asdf"` は外した） |
 
-- **バージョンの指定を dotfiles に置くのは、Mac 以外でも dotfiles を使う可能性があるから。**
-  mac-provisioning は macOS 専用なので、ここに置くと Linux では同じランタイムが揃わない。
-  最初はロールの変数に持たせたが、この理由で移した
-- **`make runtimes` はシェルの起動時に走らせない。** dotfiles は gh / ghq / fzf / asdf の本体を
-  zinit でシェル起動時に取るが、ランタイムはダウンロードとインストールに時間がかかる
+**asdf 本体を Homebrew から dotfiles に移した理由は、asdf の性質にある。**
+
+- **シェルの設定ではなく、実行時に要るもの。** shims は `node` や `npx` を呼ぶたびに PATH の
+  `asdf` を実行する。Claude Code が起動する MCP サーバー、make、launchd のように zsh を通らない
+  場面でも、固定のパスに**先に**存在している必要がある。zinit はシェル起動時に入れるので満たさない
+- **Mac 以外でも dotfiles を使う可能性がある。** Mac は Homebrew、それ以外は zinit という分け方
+  では、入れ方もバージョンも揃わない。Brewfile ではバージョンを固定できず、`brew upgrade` で
+  0.15 → 0.16 級の破壊的変更が入りうる
+
+`~/.local/bin` は dotfiles の `_env.zsh` が PATH の先頭に置く（`brew shellenv` より後なので
+Homebrew より優先される）。`make tools` は `~/.local/bin` に入れるツールの汎用ターゲットで、
+gh / ghq / fzf を将来移す受け皿にもなる。
+
+ロールの判定はこうなる。
+
+- dotfiles の `Makefile` から `asdf_version` を、`.tool-versions` からランタイムを読む
+- `~/.local/bin/asdf --version` にその版が出ないか、`~/.asdf/installs/<name>/<version>` が
+  1つでも欠けていれば `make runtimes BINDIR=... ASDF=...` を呼ぶ（`runtimes` は `tools` に依存）。
+  asdf の版を dotfiles で上げても deploy で反映される
+- 絶対パスを渡すのは、ansible から呼ぶ make はログインシェルを通らないから
+- dotfiles が無いとき（CI は clone しない、`skip_test`）は何もしない。インストールの経路は
+  dotfiles 側の make ターゲットと実機で確かめる
+
+その他の判断。
+
+- **`make runtimes` はシェルの起動時に走らせない。** ダウンロードとインストールに時間がかかる
+- **バージョンは固定する。** `latest` にすると deploy のたびに中身が変わり、壊れたときに原因を
+  追えない。CI のランナーイメージを固定しているのと同じ理由である
 - ロールは[対象リポジトリの make ターゲットを呼ぶ](#ロールは対象リポジトリの-make-ターゲットを呼ぶ)
-  原則に従う。dotfiles の `.tool-versions` を読み、`~/.asdf/installs/<name>/<version>` が1つでも
-  欠けていれば `make runtimes` を呼ぶ。`ASDF=` で絶対パスを渡すのは、ansible から呼ぶ make は
-  ログインシェルを通らず asdf が PATH に無いことがあるから
-- バージョンは `24.21.0` のように固定する。`latest:24` にすると deploy のたびに中身が変わり、
-  壊れたときに原因を追えない。CI のランナーイメージを固定しているのと同じ理由である
-- CI は dotfiles を clone しない（`skip_test`）ので、このロールは何もしない。インストールの経路は
-  dotfiles 側の `make runtimes` と実機で確かめる
+  原則に従う
 
 ### cask は Caskroom ではなく実体を見て決める
 
@@ -640,7 +660,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 | `ollama` | 収束 | ホーム配下のファイルとユーザーの LaunchAgent のみ |
 | `scheduled_jobs` | 収束 | clone と相手の `make install`。どちらもホーム配下 |
 | `github_known_hosts` | 収束 | `~/.ssh/known_hosts` のみ |
-| `asdf_runtimes` | 収束 | dotfiles の `make runtimes`。書くのは `~/.asdf` のみ |
+| `asdf_runtimes` | 収束 | dotfiles の `make runtimes`。書くのは `~/.local/bin` と `~/.asdf` のみ |
 | `tailscale` | 報告 | デーモン起動が root。ログインはブラウザでの承認 |
 | `unattended` | 報告 | `pmset` が root。FileVault は設定ウィザードの選択 |
 | `remote_login` | 報告 | `systemsetup` が root ＋ Full Disk Access。`/etc/ssh` も root |
