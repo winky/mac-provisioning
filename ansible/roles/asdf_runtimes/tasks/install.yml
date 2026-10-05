@@ -33,11 +33,14 @@
       register: asdf_runtimes_tool_versions_file
 
     # "<name> <version>" per line; comments and blank lines are skipped, as asdf skips them.
+    # An empty asdf version means dotfiles older than `make tools`: the version is then not
+    # compared, rather than failing the play.
     - name: Note what the dotfiles pin
       ansible.builtin.set_fact:
         asdf_runtimes_asdf_version: >-
           {{ asdf_runtimes_makefile.content | b64decode
-             | regex_search('^asdf_version\s*:=\s*(\S+)', '\1', multiline=True) | first }}
+             | regex_search('^asdf_version\s*:=\s*(\S+)', '\1', multiline=True)
+             | default([''], true) | first }}
         asdf_runtimes_pinned: >-
           {{ (asdf_runtimes_tool_versions_file.content | b64decode).splitlines()
              | reject('match', '^\s*(#|$)') | map('split') | list }}
