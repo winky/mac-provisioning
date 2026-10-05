@@ -212,7 +212,7 @@ dotfiles 側はシェル統合を「本体がどこから来たか」と独立�
 asdf の宣言に残っていた `bpick'*darwin-arm64*'` 決め打ち（ghq / gh で直したのと同じ穴）も、
 この変更で uname 由来になった。
 
-### 言語ランタイムは asdf のプラグインまでロールで入れる
+### 言語ランタイムは dotfiles が持ち、ロールは make ターゲットを呼ぶ
 
 Brewfile が入れるのは asdf 本体だけで、プラグインもバージョンも入らない。新しい Mac では
 `npx` が無く、`claude-config` の `mcp-servers.json` にある stdio の MCP サーバー（`npx -y ...`
@@ -221,15 +221,27 @@ Brewfile が入れるのは asdf 本体だけで、プラグインもバージ�
 `brew "node"` にしなかったのは、言語ランタイムは asdf で持つ方針だからである（Java も同じ扱い）。
 Homebrew の node は `brew upgrade` でメジャーバージョンごと上がる。
 
-- バージョンは `24.21.0` のように固定する。`latest:24` にすると、deploy のたびに中身が変わって
-  壊れたときに原因を追えない。CI のランナーイメージを固定しているのと同じ理由である。上げるときは
-  `asdf_runtimes_tools` の既定値を書き換える
-- `~/.tool-versions` は1行ずつ `lineinfile` で書き、ファイルごとは持たない。手で `asdf set -u` した
-  別のランタイムが次の deploy で消えないようにするため
-- 冪等性は `creates`（`~/.asdf/plugins/<name>` と `~/.asdf/installs/<name>/<version>`）で取る。
-  asdf 自身が見ているのも同じディレクトリである
-- CI の test ジョブは Brewfile を適用しないので、`asdf` も `brew install` する。入れないと、
-  このロールは「asdf が無い」と報告するだけになり、インストールの経路が実機でしか動かない
+asdf まわりの分担はこうなる。
+
+| 持ち主 | 持っているもの |
+|---|---|
+| Brewfile | asdf 本体 |
+| dotfiles | shims を PATH に置く1行、`.asdfrc`、**`.tool-versions`（何をどの版で）と `make runtimes`（入れ方）** |
+| `asdf_runtimes` ロール | `make runtimes` を呼ぶべきかどうかの判定だけ |
+
+- **バージョンの指定を dotfiles に置くのは、Mac 以外でも dotfiles を使う可能性があるから。**
+  mac-provisioning は macOS 専用なので、ここに置くと Linux では同じランタイムが揃わない。
+  最初はロールの変数に持たせたが、この理由で移した
+- **`make runtimes` はシェルの起動時に走らせない。** dotfiles は gh / ghq / fzf / asdf の本体を
+  zinit でシェル起動時に取るが、ランタイムはダウンロードとインストールに時間がかかる
+- ロールは[対象リポジトリの make ターゲットを呼ぶ](#ロールは対象リポジトリの-make-ターゲットを呼ぶ)
+  原則に従う。dotfiles の `.tool-versions` を読み、`~/.asdf/installs/<name>/<version>` が1つでも
+  欠けていれば `make runtimes` を呼ぶ。`ASDF=` で絶対パスを渡すのは、ansible から呼ぶ make は
+  ログインシェルを通らず asdf が PATH に無いことがあるから
+- バージョンは `24.21.0` のように固定する。`latest:24` にすると deploy のたびに中身が変わり、
+  壊れたときに原因を追えない。CI のランナーイメージを固定しているのと同じ理由である
+- CI は dotfiles を clone しない（`skip_test`）ので、このロールは何もしない。インストールの経路は
+  dotfiles 側の `make runtimes` と実機で確かめる
 
 ### cask は Caskroom ではなく実体を見て決める
 
@@ -628,7 +640,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 | `ollama` | 収束 | ホーム配下のファイルとユーザーの LaunchAgent のみ |
 | `scheduled_jobs` | 収束 | clone と相手の `make install`。どちらもホーム配下 |
 | `github_known_hosts` | 収束 | `~/.ssh/known_hosts` のみ |
-| `asdf_runtimes` | 収束 | `~/.asdf` と `~/.tool-versions` のみ |
+| `asdf_runtimes` | 収束 | dotfiles の `make runtimes`。書くのは `~/.asdf` のみ |
 | `tailscale` | 報告 | デーモン起動が root。ログインはブラウザでの承認 |
 | `unattended` | 報告 | `pmset` が root。FileVault は設定ウィザードの選択 |
 | `remote_login` | 報告 | `systemsetup` が root ＋ Full Disk Access。`/etc/ssh` も root |
