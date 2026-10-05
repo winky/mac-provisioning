@@ -35,8 +35,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      # asdf too: the Brewfile is not applied here, and without it asdf_runtimes would only
+      # report that asdf is missing -- the install path would never run anywhere but a real Mac.
       - name: Install ansible
-        run: brew install ansible
+        run: brew install ansible asdf
       # The profile is passed explicitly: the runner is neither a MacBook nor a Mac mini,
       # so scripts/host-profile.sh would (correctly) refuse to guess.
       - name: Run ansible-playbook

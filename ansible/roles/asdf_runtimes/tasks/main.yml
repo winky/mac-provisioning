@@ -1,0 +1,7 @@
+---
+#
+# asdf_runtimes/tasks/main.yml
+# main task for the asdf language runtimes
+#
+- name: Language Runtimes Install
+  ansible.builtin.import_tasks: install.yml

@@ -68,6 +68,10 @@
     - role: macos
       tags:
         - macos
+    # Before claude_config: its MCP servers are launched with npx, which comes from here.
+    - role: asdf_runtimes
+      tags:
+        - asdf_runtimes
     - role: claude_config
       tags:
         - claude_config

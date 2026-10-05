@@ -1,0 +1,64 @@
+---
+#
+# asdf_runtimes/tasks/install.yml
+# Add the asdf plugins, install the pinned versions and make them the user default
+#
+# Converges rather than reports: everything lands under $HOME (~/.asdf and ~/.tool-versions),
+# so `make deploy` stays runnable without a password.
+#
+# asdf itself comes from the Brewfile. This role does not install it -- packages belong to the
+# Brewfile -- so it reports and stops if the binary is not there yet, the same as ollama.
+- name: Check whether asdf is installed
+  ansible.builtin.stat:
+    path: "{{ asdf_runtimes_binary }}"
+  register: asdf_runtimes_installed
+
+- name: Notify that asdf is not installed
+  ansible.builtin.debug:
+    msg: >-
+      {{ asdf_runtimes_binary }} is missing. Run `make init` to apply the Brewfile, which has
+      brew "asdf".
+  when: not asdf_runtimes_installed.stat.exists
+
+- name: Set up the asdf runtimes
+  when: asdf_runtimes_installed.stat.exists
+  environment:
+    ASDF_DATA_DIR: "{{ asdf_runtimes_data_dir }}"
+  block:
+    # `creates` rather than parsing `asdf plugin list`: the directory is what asdf itself
+    # checks, and it keeps the task skippable in check mode.
+    - name: Add the asdf plugins
+      ansible.builtin.command:
+        cmd: "{{ asdf_runtimes_binary }} plugin add {{ item.name }}"
+        creates: "{{ asdf_runtimes_data_dir }}/plugins/{{ item.name }}"
+      loop: "{{ asdf_runtimes_tools }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Install the pinned versions
+      ansible.builtin.command:
+        cmd: "{{ asdf_runtimes_binary }} install {{ item.name }} {{ item.version }}"
+        creates: "{{ asdf_runtimes_data_dir }}/installs/{{ item.name }}/{{ item.version }}"
+      loop: "{{ asdf_runtimes_tools }}"
+      loop_control:
+        label: "{{ item.name }} {{ item.version }}"
+
+    # One line per tool rather than owning the file, so a runtime added by hand with
+    # `asdf set -u` survives the next deploy. This is the line `asdf set -u` would write.
+    - name: Make the pinned versions the user default
+      ansible.builtin.lineinfile:
+        path: "{{ asdf_runtimes_tool_versions }}"
+        regexp: "^{{ item.name }}\\s"
+        line: "{{ item.name }} {{ item.version }}"
+        create: true
+        mode: "0644"
+      loop: "{{ asdf_runtimes_tools }}"
+      loop_control:
+        label: "{{ item.name }} {{ item.version }}"
+
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note that asdf is not installed yet # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: "{{ provision_actions | default([]) + ['make init  # brew \"asdf\" is missing'] }}"
+  when: not asdf_runtimes_installed.stat.exists

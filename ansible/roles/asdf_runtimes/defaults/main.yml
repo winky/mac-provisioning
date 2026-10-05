@@ -1,0 +1,17 @@
+---
+#
+# asdf_runtimes/defaults/main.yml
+#
+# asdf itself comes from the Brewfile. This role only adds the plugins and versions on top.
+asdf_runtimes_binary: /opt/homebrew/bin/asdf
+asdf_runtimes_data_dir: "{{ ansible_facts.env.HOME }}/.asdf"
+asdf_runtimes_tool_versions: "{{ ansible_facts.env.HOME }}/.tool-versions"
+
+# Pinned rather than "latest:24": a runtime that moves under every deploy would make a
+# break unattributable, the same reason CI pins its runner image. Bump it here.
+#
+# nodejs is here for npx, which launches the stdio MCP servers in claude-config's
+# mcp-servers.json. Node 24 is the Active LTS line.
+asdf_runtimes_tools:
+  - name: nodejs
+    version: 24.21.0

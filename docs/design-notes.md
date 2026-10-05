@@ -212,6 +212,25 @@ dotfiles 側はシェル統合を「本体がどこから来たか」と独立�
 asdf の宣言に残っていた `bpick'*darwin-arm64*'` 決め打ち（ghq / gh で直したのと同じ穴）も、
 この変更で uname 由来になった。
 
+### 言語ランタイムは asdf のプラグインまでロールで入れる
+
+Brewfile が入れるのは asdf 本体だけで、プラグインもバージョンも入らない。新しい Mac では
+`npx` が無く、`claude-config` の `mcp-servers.json` にある stdio の MCP サーバー（`npx -y ...`
+で起動する）が `Executable not found in $PATH: "npx"` で落ちた。
+
+`brew "node"` にしなかったのは、言語ランタイムは asdf で持つ方針だからである（Java も同じ扱い）。
+Homebrew の node は `brew upgrade` でメジャーバージョンごと上がる。
+
+- バージョンは `24.21.0` のように固定する。`latest:24` にすると、deploy のたびに中身が変わって
+  壊れたときに原因を追えない。CI のランナーイメージを固定しているのと同じ理由である。上げるときは
+  `asdf_runtimes_tools` の既定値を書き換える
+- `~/.tool-versions` は1行ずつ `lineinfile` で書き、ファイルごとは持たない。手で `asdf set -u` した
+  別のランタイムが次の deploy で消えないようにするため
+- 冪等性は `creates`（`~/.asdf/plugins/<name>` と `~/.asdf/installs/<name>/<version>`）で取る。
+  asdf 自身が見ているのも同じディレクトリである
+- CI の test ジョブは Brewfile を適用しないので、`asdf` も `brew install` する。入れないと、
+  このロールは「asdf が無い」と報告するだけになり、インストールの経路が実機でしか動かない
+
 ### cask は Caskroom ではなく実体を見て決める
 
 Brewfile に無いが実機に入っている cask が12個あった。取り込むかどうかは **Caskroom の日付や
@@ -577,7 +596,7 @@ private は2つある（`scheduled-jobs` は Backlog のプロジェクトキー
 2. `install.sh` — clone して `make init`（Homebrew と Brewfile。ここで `gh` が入る）
 3. `gh auth login --git-protocol ssh`〔対話〕— 認証と SSH 鍵の登録
 4. `make deploy` — github_known_hosts / dotfiles / tailscale / unattended / ollama /
-   scheduled_jobs / macos / claude_config
+   scheduled_jobs / macos / asdf_runtimes / claude_config
 
 `install.sh` が `make all` ではなく `make init` で止まるのはこのためである。`gh` は `make init` で
 入るので、それより前に認証はできない。`make all` のまま通すと `claude_config` が必ず一度失敗する。
@@ -609,6 +628,7 @@ Phase 3 の3ロールを書いた結果、境目がはっきりした。**root �
 | `ollama` | 収束 | ホーム配下のファイルとユーザーの LaunchAgent のみ |
 | `scheduled_jobs` | 収束 | clone と相手の `make install`。どちらもホーム配下 |
 | `github_known_hosts` | 収束 | `~/.ssh/known_hosts` のみ |
+| `asdf_runtimes` | 収束 | `~/.asdf` と `~/.tool-versions` のみ |
 | `tailscale` | 報告 | デーモン起動が root。ログインはブラウザでの承認 |
 | `unattended` | 報告 | `pmset` が root。FileVault は設定ウィザードの選択 |
 | `remote_login` | 報告 | `systemsetup` が root ＋ Full Disk Access。`/etc/ssh` も root |
