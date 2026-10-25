@@ -68,6 +68,9 @@
     - role: macos
       tags:
         - macos
+    - role: mac_vulnwatch
+      tags:
+        - mac_vulnwatch
     # Before claude_config: its MCP servers are launched with npx, which comes from here.
     - role: asdf_runtimes
       tags:

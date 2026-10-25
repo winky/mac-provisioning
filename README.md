@@ -65,9 +65,9 @@ Brewfile.mac-mini        Mac mini 固有
 scripts/install.sh       新しい Mac で最初に実行する
 scripts/init.sh          Homebrew と Brewfile
 scripts/host-profile.sh  機種から laptop / mac-mini を判定する
-ansible/site.yml         11ロール（github_known_hosts / dotfiles / remote_login /
+ansible/site.yml         12ロール（github_known_hosts / dotfiles / remote_login /
                          tailscale / unattended / ollama / scheduled_jobs / macos /
-                         asdf_runtimes / claude_config / claude_code）
+                         mac_vulnwatch / asdf_runtimes / claude_config / claude_code）
 ansible/group_vars/      両プロファイル共通の変数
 ansible/vars/            プロファイルごとの変数
 ```
@@ -97,6 +97,7 @@ cd ansible && ansible-playbook site.yml --tags macos
 | Homebrew 導入時の sudo パスワード | インストーラが要求する |
 | cask の許可ダイアログ | アプリによって出る |
 | `gh` の認証（`gh auth login --git-protocol ssh`） | 対話が必須。認証と同時に SSH 鍵の生成・登録も行う。private な `claude-config` の取得もこれに依存する |
+| mac-vulnwatch の起票先（`~/.config/mac-vulnwatch/config` の `GITHUB_REPO`） | 起票先は private リポジトリで、このリポジトリは public なので名前を書けない。各機体で1回書く。未設定ならデプロイの最後に出る |
 | Claude Code の導入 | native installer（`~/.local/bin/claude`）を使う。cask は PATH で負けるうえ、`zap` が `~/.claude` を消す。[docs/design-notes.md](docs/design-notes.md) を参照 |
 | 入力ソース（キーボード / 日本語入力） | macOS が辞書の配列で保存しており `osx_defaults` では表現できないため。[docs/design-notes.md](docs/design-notes.md) を参照 |
 
