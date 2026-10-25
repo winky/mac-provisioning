@@ -1,0 +1,43 @@
+---
+#
+# mac_vulnwatch/tasks/main.yml
+# Check that mac-vulnwatch knows where to file its findings
+#
+# The tool and its daily schedule come from the Brewfile (`brew "winky/tap/mac-vulnwatch"`,
+# whose service the bundle starts); there is nothing for the playbook to install. What it cannot
+# carry is the repository the findings are filed in. That repository is private and this one
+# is public, so its name is not written anywhere here: each machine is given it once, by hand.
+# Until then the scan still runs and keeps its reports locally; it only skips the issues.
+#
+# Reading the file is all this does. Writing it would need the name.
+- name: Read the mac-vulnwatch configuration
+  ansible.builtin.slurp:
+    src: "{{ mac_vulnwatch_config }}"
+  register: mac_vulnwatch_config_file
+  failed_when: false
+
+- name: Check whether a findings repository is configured
+  ansible.builtin.set_fact:
+    mac_vulnwatch_has_repo: >-
+      {{ (mac_vulnwatch_config_file.content | default('') | b64decode)
+         is search('(?m)^\s*GITHUB_REPO\s*=\s*\S') }}
+
+- name: Notify that mac-vulnwatch has nowhere to file issues
+  ansible.builtin.debug:
+    msg: >-
+      mac-vulnwatch scans daily but has no GITHUB_REPO in {{ mac_vulnwatch_config }}, so it
+      keeps its reports locally and opens no issues. Add the private findings repository
+      there once on this machine.
+  when: not mac_vulnwatch_has_repo | bool
+
+# The placeholder stays a placeholder: the real name is private.
+#
+# noqa is deliberate: provision_actions is a play-level accumulator shared by several roles,
+# not a variable belonging to this one, so the role-prefix rule does not apply.
+- name: Note what mac-vulnwatch still needs # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    provision_actions: >-
+      {{ provision_actions | default([])
+         + ["mkdir -p " ~ (mac_vulnwatch_config | dirname) ~ " && echo 'GITHUB_REPO=<owner>/<findings repo>' >> "
+            ~ mac_vulnwatch_config ~ "  # mac-vulnwatch files no issues until set"] }}
+  when: not mac_vulnwatch_has_repo | bool

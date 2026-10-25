@@ -1,0 +1,5 @@
+---
+#
+# mac_vulnwatch/defaults/main.yml
+#
+mac_vulnwatch_config: "{{ ansible_facts.env.HOME }}/.config/mac-vulnwatch/config"
